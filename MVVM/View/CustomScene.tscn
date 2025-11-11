@@ -1,0 +1,20 @@
+[gd_scene load_steps=2 format=3 uid="uid://51iu8sohyplw"]
+
+[ext_resource type="Script" path="res://MVVM/ViewModel/CustomScene.cs" id="1_vxxyj"]
+
+[node name="CustomScene" type="Panel" node_paths=PackedStringArray("RotateText")]
+offset_right = 400.0
+offset_bottom = 260.0
+script = ExtResource("1_vxxyj")
+RotateText = NodePath("RotateText")
+
+[node name="RotateText" type="Label" parent="."]
+layout_mode = 0
+offset_left = 100.0
+offset_top = 80.0
+offset_right = 300.0
+offset_bottom = 130.0
+pivot_offset = Vector2(100, 25)
+text = "null"
+horizontal_alignment = 1
+vertical_alignment = 1
