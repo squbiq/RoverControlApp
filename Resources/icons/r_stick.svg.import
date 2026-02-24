@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://ba8ayroqmygtp"
-path="res://.godot/imported/cross-small.svg-6fcd5a4f44b057cf7d0de1435f9b5c50.ctex"
+uid="uid://ccvi6ypwvt8ik"
+path="res://.godot/imported/r_stick.svg-39a26f9b22cbc98257528e90bf7888b2.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://Resources/cross-small.svg"
-dest_files=["res://.godot/imported/cross-small.svg-6fcd5a4f44b057cf7d0de1435f9b5c50.ctex"]
+source_file="res://Resources/icons/r_stick.svg"
+dest_files=["res://.godot/imported/r_stick.svg-39a26f9b22cbc98257528e90bf7888b2.ctex"]
 
 [params]
 

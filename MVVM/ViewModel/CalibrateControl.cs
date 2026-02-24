@@ -205,13 +205,11 @@ public partial class CalibrateControl : Panel
 		}
 	}
 
-	// Changing ui visibility
 	void OnVisibilityChanged()
 	{
 		CalibrateEnabled = Visible;
 	}
 
-	// Some Actions on Control Mode Changed
 	public Task ControlModeChangedControl(MqttClasses.ControlMode newMode)
 	{
 		CalibrateEnabled = (newMode == MqttClasses.ControlMode.EStop ? true : false);
@@ -235,7 +233,6 @@ public partial class CalibrateControl : Panel
 		return Task.CompletedTask;
 	}
 
-	// Changing the choosen axis, updating the vescId
 	void ChooseAxis(long index)
 	{
 
@@ -279,7 +276,6 @@ public partial class CalibrateControl : Panel
 	}
 
 
-	// Velocity Action on Button Hold, Actions Down and Up
 	void VelocityDown()
 	{
 		if (!TryGetSelectedVescId(out var vescId)) return;
@@ -292,7 +288,6 @@ public partial class CalibrateControl : Panel
 	}
 
 
-	// Others actions Actions 
 	void OffsetClicked()
 	{
 		if (!TryGetSelectedVescId(out var vescId)) return;

@@ -3,15 +3,12 @@
 [Tool]
 public partial class DraggablePanel : Control
 {
-	[Signal]
-	public delegate void PanelVisibilityChangedEventHandler();
-
 	[ExportGroup("References")]
-    [Export] public Control DragArea;
-    [Export] public Label TitleLabel;
-    [Export] public Button CloseButton;
+	[Export] public Control DragArea = null!;
+	[Export] public Label TitleLabel = null!;
+	[Export] public Button CloseButton = null!;
 
-    [ExportGroup("Appearance")]
+	[ExportGroup("Appearance")]
     [Export] public string WindowTitle = "Window";
     [Export] public Color TitleBarColor = new Color(0.15f, 0.15f, 0.15f);
     [Export] public Color TitleTextColor = Colors.White;
@@ -26,13 +23,13 @@ public partial class DraggablePanel : Control
 	[Export] public bool ShowTheCloseButton = true;
 	[Export] public bool ReturnToStartOnClose = true;
 
-	private Control _sceneRoot;
-    private bool _dragging = false;
+	private Control _sceneRoot = null!;
+	private bool _dragging = false;
     private Vector2 _startPosition;
 
     public override void _Ready()
     {
-        _sceneRoot = GetOwner() as Control;
+        _sceneRoot = GetOwner<Control>();
 
         if (_sceneRoot == null)
             return;
@@ -42,7 +39,7 @@ public partial class DraggablePanel : Control
 		if (!Engine.IsEditorHint() && CloseButton != null)
             CloseButton.Pressed += OnClosePressed;
 
-        UpdateVisuals();
+		UpdateVisuals();
     }
 
     public override void _Process(double delta)
@@ -53,45 +50,75 @@ public partial class DraggablePanel : Control
 
     public override void _Input(InputEvent @event)
     {
-        if (_sceneRoot == null || DragArea == null)
+        if (_sceneRoot == null || DragArea == null || !_sceneRoot.Visible)
             return;
 
-        Vector2 mousePos = GetGlobalMousePosition();
-        Rect2 dragRect = new Rect2(DragArea.GlobalPosition, DragArea.Size);
-        bool mouseOver = dragRect.HasPoint(mousePos);
+		Rect2 dragRect = DragArea.GetGlobalRect();
+		Rect2 rootRect = _sceneRoot.GetGlobalRect();
+		Vector2 mousePos = GetGlobalMousePosition();
 
-        if (!_dragging && !mouseOver)
+		bool mouseOver = dragRect.HasPoint(mousePos);
+		bool mouseOverRoot = rootRect.HasPoint(mousePos);
+
+		if (!_dragging && !mouseOverRoot)
             return;
 
-        if (@event is InputEventMouseButton mouseButton &&
-            mouseButton.ButtonIndex == MouseButton.Left)
-        {
-            if (mouseButton.Pressed && mouseOver)
+		if (
+			@event is InputEventMouseButton mouseButton &&
+			mouseButton.ButtonIndex == MouseButton.Left
+		) {
+			if (mouseButton.Pressed && !IsPanelAbove(mouseButton))
             {
-                _dragging = true;
-
-                if (BringToFrontOnDrag)
-                {
-                    var parent = _sceneRoot.GetParent();
-                    parent?.MoveChild(_sceneRoot, parent.GetChildCount() - 1);
-                }
-            }
+				if(mouseOver) {
+					_dragging = true;
+				}
+				if (BringToFrontOnDrag) {
+					var parent = _sceneRoot.GetParent();
+					parent?.MoveChild(_sceneRoot, -1);
+				}
+			}
             else if (!mouseButton.Pressed)
             {
                 _dragging = false;
             }
-        }
 
-        if (@event is InputEventMouseMotion motion && _dragging)
+		}
+
+		if (@event is InputEventMouseMotion motion && _dragging)
         {
-            _sceneRoot.Position += motion.Relative;
+			_sceneRoot.Position += motion.Relative;
 
             if (ClampToViewport && !Engine.IsEditorHint())
                 ClampToScreen();
         }
     }
 
-    private void UpdateVisuals()
+	public bool IsPanelAbove(InputEventMouseButton mouse)
+	{
+		Rect2 myRect = GetGlobalRect();
+		Rect2 mouseRect = new Rect2(mouse.Position, 10, 10);
+
+		var parent = _sceneRoot.GetParent();
+		if (parent == null) return false;
+	
+		foreach (Node node in parent.GetChildren())
+		{
+			if (node == this) continue;
+			if (node is Panel other && other.Visible == true)
+			{
+				Rect2 otherRect = other.GetGlobalRect();
+				if (myRect.Intersects(otherRect)) {
+					if (mouseRect.Intersects(otherRect))
+						if (other.GetIndex() > _sceneRoot.GetIndex())
+							return true;
+				}
+			}
+		}
+		return false;
+	}
+
+
+	private void UpdateVisuals()
     {
 
         if (TitleLabel != null)
@@ -147,4 +174,5 @@ public partial class DraggablePanel : Control
             Mathf.Clamp(_sceneRoot.Position.Y, 0, viewportSize.Y - _sceneRoot.Size.Y)
         );
     }
+
 }
