@@ -7,7 +7,7 @@ custom_minimum_size = Vector2(120, 120)
 layout_mode = 3
 anchors_preset = 0
 script = ExtResource("1_pyoxg")
-Value = 11.0
+Value = 20.0
 title = NodePath("Title")
 edit = NodePath("Edit")
 
@@ -35,5 +35,5 @@ offset_top = -31.0
 offset_right = 41.5313
 grow_horizontal = 2
 grow_vertical = 0
-text = "11"
+text = "20"
 alignment = 1

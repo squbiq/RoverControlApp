@@ -13,7 +13,10 @@ public class CalibrateAxisController : IRoverCalibrateController
 	private float primaryThreshold = 0.8f;    // primary axis must reach this to trigger
 	private float centerDeadzone = 0.15f;     // when both axes are within this, we reset
 	private bool actionTriggered = false;     // prevents repeated triggers until center
-	private float lastBumperValue = 0f; 
+	private float lastBumperValue = 0f;
+
+	private float velocityMin = 2000f;
+	private float velocityMax = 10000f;
 
 	private readonly StringName[] _usedActions =
 	[
@@ -35,13 +38,17 @@ public class CalibrateAxisController : IRoverCalibrateController
 	public bool HandleInput(in InputEvent inputEvent, DualSeatEvent.InputDevice targetInputDevice)
 	{
 		// Making sure to hold or press wheel to activate the Calibration Mode
-		if (!OperateMode(inputEvent, targetInputDevice))
+		if (!OperateMode(inputEvent, targetInputDevice)) {
+			CalibrateController.StopVelocitySafe();
 			return false;
+		}
 
 		// Making sure the panel is visible. Making it more safe, to not calibrate if don't wanted to
-		if (LocalSettingsMemory.Singleton.CalibrateAxis.PanelVisibilty != true)
+		if (LocalSettingsMemory.Singleton.CalibrateAxis.PanelVisibilty != true) {
+			CalibrateController.StopVelocitySafe();
 			return false;
-
+		}
+			
 		// Handlers
 		RotateBumper(inputEvent, targetInputDevice);
 		RotateOnce(inputEvent, targetInputDevice);
@@ -52,7 +59,6 @@ public class CalibrateAxisController : IRoverCalibrateController
 	}
 
 
-	// Activation of CalibrateAxis - Wheel Hold or Click like DriveMode
 	private bool OperateMode(in InputEvent inputEvent, DualSeatEvent.InputDevice targetInputDevice)
 	{
 		switch (LocalSettings.Singleton.Joystick.ToggleableKinematics)
@@ -70,7 +76,6 @@ public class CalibrateAxisController : IRoverCalibrateController
 		}
 	}
 
-	// Left Joystick: to Left - Back, to Right - Next 
 	private void ChangeAxis(in InputEvent inputEvent, DualSeatEvent.InputDevice targetInputDevice)
 	{
 		// Get joystick vector from actions mapped for this input device
@@ -110,33 +115,24 @@ public class CalibrateAxisController : IRoverCalibrateController
 
 	}
 
-	// Velocity: L2 - CCW (Left), R2 - CW (Right)
 	private void RotateBumper(in InputEvent inputEvent, DualSeatEvent.InputDevice targetInputDevice)
 	{
-		// Geting the last action to do more conditions
 		CalibrateController.LastActions lastAction = CalibrateController.LastAction;
 
-		// Read raw axis value
 		float rotateBumpers = Input.GetAxis(
 			DualSeatEvent.GetName(RcaInEvName.CalibrateRotateLeft, targetInputDevice),
 			DualSeatEvent.GetName(RcaInEvName.CalibrateRotateRight, targetInputDevice)
 		);
 
-		// If the offset is pressed during velocity, it will not be executed, and the next bumper will not return to its starting position.
 		if (
 			(lastBumperValue < 0f && inputEvent.IsActionReleased(DualSeatEvent.GetName(RcaInEvName.CalibrateRotateLeft, targetInputDevice))) ||
 			(lastBumperValue > 0f && inputEvent.IsActionReleased(DualSeatEvent.GetName(RcaInEvName.CalibrateRotateRight, targetInputDevice)))
 		) lastBumperValue = 0f;
 
-
 		// Don't run i bumper are not moved and the action is not yet started
 		if (rotateBumpers == 0f && lastAction != CalibrateController.LastActions.VelocityStarted) return;
 
-		// Don't run i Offset are set, Velocity go stop and waiting for bumper to go to the start position
-		if (lastBumperValue != 0f && lastAction == CalibrateController.LastActions.Offset) return;
-
-		// Don't run is velocity is stoppped
-		if (lastBumperValue != 0f && lastAction == CalibrateController.LastActions.VelocityStopped) return;
+		if (lastBumperValue != 0f && lastAction != CalibrateController.LastActions.VelocityRunning) return;
 
 		// Getting accual vescId
 		byte vescId = LocalSettingsMemory.Singleton.CalibrateAxis.ChoosenAxis;
@@ -144,11 +140,10 @@ public class CalibrateAxisController : IRoverCalibrateController
 
 		// Getting some values
 		float multiple = Math.Abs(rotateBumpers);
-		float velocity = Math.Abs(LocalSettingsMemory.Singleton.CalibrateAxis.VelocityValue);
-		if (velocity == 0f) return; // Velocity cannot be zero
+		float calculatedVelocity = velocityMin + ((velocityMax - velocityMin) * multiple);
 
 		// Multiplaing the current amount by bumper pressing state, and te rotation
-		float newVelocity = velocity * multiple * (rotateBumpers > 0f ? 1f : -1f);
+		float newVelocity = calculatedVelocity * (rotateBumpers > 0f ? 1f : -1f);
 		lastBumperValue = rotateBumpers;
 
 		if (rotateBumpers != 0f)
@@ -171,7 +166,6 @@ public class CalibrateAxisController : IRoverCalibrateController
 
 	}
 
-	// Offset: L1 - CCW (Left), R1 - CW (Right)
 	private void RotateOnce(in InputEvent inputEvent, DualSeatEvent.InputDevice targetInputDevice)
 	{
 		// Reading the actions
@@ -193,7 +187,6 @@ public class CalibrateAxisController : IRoverCalibrateController
 		if (right) { CalibrateController.SendOffsetAsync(vescId, offset); }
 	}
 
-	// D-pad Actions: Up = Stop, Down = Cancel, Left = Confirm, Right = Return to Origin
 	private void ActionHandler(in InputEvent inputEvent, DualSeatEvent.InputDevice targetInputDevice)
 	{
 		// Reading of the action
@@ -209,17 +202,10 @@ public class CalibrateAxisController : IRoverCalibrateController
 		byte vescId = LocalSettingsMemory.Singleton.CalibrateAxis.ChoosenAxis;
 		if (vescId == byte.MaxValue) return;
 
-		if (left)
-			CalibrateController.SendConfirmAsync(vescId);
-
-		if (right)
-			CalibrateController.SendReturnToOriginAsync(vescId);
-
-		if (top)
-			CalibrateController.SendStopAsync(vescId);
-
-		if (bottom)
-			CalibrateController.SendCancelAsync(vescId);
+		if (left) CalibrateController.SendStopAsync(vescId);
+		if (right) CalibrateController.SendCancelAsync(vescId); 
+		if (top) CalibrateController.SendReturnToOriginAsync(vescId);
+		if (bottom) CalibrateController.SendConfirmAsync(vescId);
 	}
 
 

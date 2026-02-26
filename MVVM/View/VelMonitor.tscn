@@ -360,5 +360,3 @@ layout_mode = 1
 offset_bottom = 0.0
 WindowTitle = "VelMonitor"
 ShowTheCloseButton = false
-
-[connection signal="PanelVisibilityChanged" from="DraggablePanel" to="." method="set_visible"]

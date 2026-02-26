@@ -1,4 +1,5 @@
 ﻿using Godot;
+using RoverControlApp.Core;
 
 [Tool]
 public partial class DraggablePanel : Control
@@ -74,7 +75,7 @@ public partial class DraggablePanel : Control
 				}
 				if (BringToFrontOnDrag) {
 					var parent = _sceneRoot.GetParent();
-					parent?.MoveChild(_sceneRoot, -1);
+					parent?.MoveChild(_sceneRoot, parent.GetChildCount() - 1);
 				}
 			}
             else if (!mouseButton.Pressed)
@@ -95,23 +96,20 @@ public partial class DraggablePanel : Control
 
 	public bool IsPanelAbove(InputEventMouseButton mouse)
 	{
-		Rect2 myRect = GetGlobalRect();
-		Rect2 mouseRect = new Rect2(mouse.Position, 10, 10);
+		Rect2 mouseRect = new Rect2(mouse.GlobalPosition, 10, 10);
 
 		var parent = _sceneRoot.GetParent();
 		if (parent == null) return false;
 	
 		foreach (Node node in parent.GetChildren())
 		{
-			if (node == this) continue;
+			if (node == _sceneRoot) continue;
 			if (node is Panel other && other.Visible == true)
 			{
 				Rect2 otherRect = other.GetGlobalRect();
-				if (myRect.Intersects(otherRect)) {
-					if (mouseRect.Intersects(otherRect))
-						if (other.GetIndex() > _sceneRoot.GetIndex())
+				if (mouseRect.Intersects(otherRect))
+					if(other.GetIndex() > _sceneRoot.GetIndex())
 							return true;
-				}
 			}
 		}
 		return false;
@@ -159,7 +157,6 @@ public partial class DraggablePanel : Control
             return;
 
 		_sceneRoot.Visible = value;
-		_sceneRoot.EmitSignal(SignalName.PanelVisibilityChanged);
 
 		if (!value && ReturnToStartOnClose)
             _sceneRoot.Position = _startPosition;

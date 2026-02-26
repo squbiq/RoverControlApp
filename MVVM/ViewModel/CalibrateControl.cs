@@ -15,10 +15,10 @@ public partial class CalibrateControl : Panel
 	[Export] private OptionButton AxisOptions = new OptionButton();
 
 	[ExportGroup("Offset")]
-	[Export] private Knob OffsetKnob = new Knob();
+	[Export] public Knob OffsetKnob = new Knob();
 
 	[ExportGroup("Velocity")]
-	[Export] private Knob VelocityKnob = new Knob();
+	[Export] public Knob VelocityKnob = new Knob();
 
 	[ExportGroup("Actions Button")]
 	[Export] private Button OffsetButton = new Button();
@@ -140,8 +140,8 @@ public partial class CalibrateControl : Panel
 		HookButtons(AxisButtons, ref _AxisBtnHandlers, HookAction.Enter, ChooseAxis);
 
 		// Handlers for LineEdit and Sliders
-		OffsetKnob.ValueChanged += newValue => ValueChanged(newValue, v => OffsetValue = v);
-		VelocityKnob.ValueChanged += newValue => ValueChanged(newValue, v => VelocityValue = v);
+		OffsetKnob.ValueChanged += newValue => OffsetValue = newValue;
+		VelocityKnob.ValueChanged += newValue => VelocityValue = newValue;
 
 		// Handlers for functional buttons
 		OffsetButton.Pressed += OffsetClicked;
@@ -151,6 +151,9 @@ public partial class CalibrateControl : Panel
 		CancelButton.Pressed += CancelClicked;
 		StopButton.Pressed += StopClicked;
 		ReturnToOriginButton.Pressed += ReturnToOriginClicked;
+
+		CalibrateController.VelocityChanged += ManageVelocityChange;
+		CalibrateController.OffsetSend += ManageOffsetSend;
 
 		Connect("visibility_changed", new Callable(this, nameof(OnVisibilityChanged)));
 	}
@@ -177,8 +180,8 @@ public partial class CalibrateControl : Panel
 		HookButtons(AxisButtons, ref _AxisBtnHandlers, HookAction.Exit, ChooseAxis);
 
 		// Handlers for LineEdit and Sliders
-		OffsetKnob.ValueChanged -= newValue => ValueChanged(newValue, v => OffsetValue = v);
-		VelocityKnob.ValueChanged -= newValue => ValueChanged(newValue, v => VelocityValue = v);
+		OffsetKnob.ValueChanged -= newValue => OffsetValue = newValue;
+		VelocityKnob.ValueChanged -= newValue => VelocityValue = newValue;
 
 		// Handlers for functional buttons
 		OffsetButton.Pressed -= OffsetClicked;
@@ -189,13 +192,15 @@ public partial class CalibrateControl : Panel
 		StopButton.Pressed -= StopClicked;
 		ReturnToOriginButton.Pressed -= ReturnToOriginClicked;
 
+		CalibrateController.VelocityChanged -= ManageVelocityChange;
+		CalibrateController.OffsetSend -= ManageOffsetSend;
+
 		Disconnect("visibility_changed", new Callable(this, nameof(OnVisibilityChanged)));
 		LocalSettingsMemory.Singleton.Disconnect(LocalSettingsMemory.SignalName.PropagatedPropertyChanged,
 			Callable.From<StringName, StringName, Variant, Variant>(OnSettingsMemoryPropertyChanged));
 	}
 
 
-	// Changing Axis via Pad inputs
 	void OnSettingsMemoryPropertyChanged(StringName category, StringName name, Variant oldValue, Variant newValue)
 	{
 		if (category != nameof(LocalSettingsMemory.Singleton.CalibrateAxis)) return;
@@ -205,15 +210,24 @@ public partial class CalibrateControl : Panel
 		}
 	}
 
-	void OnVisibilityChanged()
-	{
+	void OnVisibilityChanged() {
 		CalibrateEnabled = Visible;
+		if (
+			CalibrateEnabled == false &&
+			CalibrateController.LastAction != CalibrateController.LastActions.Action &&
+			CalibrateController.LastAction != CalibrateController.LastActions.None
+		)
+			if (TryGetSelectedVescId(out byte vesc))
+				CalibrateController.SendCancelAsync(vesc);
 	}
+
 
 	public Task ControlModeChangedControl(MqttClasses.ControlMode newMode)
 	{
 		CalibrateEnabled = (newMode == MqttClasses.ControlMode.EStop ? true : false);
 		PanelCover.Visible = CalibrateEnabled ? false : true;
+
+		EventLogger.LogMessage("CalibrateControl", EventLogger.LogLevel.Info, $"ControlMode Changed to {newMode}");
 
 		// Making sure to Cancel if no action provided before changing the ControlMode
 		if (
@@ -225,7 +239,7 @@ public partial class CalibrateControl : Panel
 			if (_vescId != byte.MaxValue)
 			{
 				// Stop velocities to avoid conflicts, then send Cancel
-				CalibrateController.StopVelocity();
+				CalibrateController.StopVelocitySafe();
 				CalibrateController.SendCancelAsync(_vescId);
 			}
 		}
@@ -243,7 +257,7 @@ public partial class CalibrateControl : Panel
 		)
 		{
 			// Stop velocities to avoid conflicts, then send Cancel
-			CalibrateController.StopVelocity();
+			CalibrateController.StopVelocitySafe();
 			CalibrateController.SendCancelAsync(_vescId);
 		}
 
@@ -262,17 +276,23 @@ public partial class CalibrateControl : Panel
 		}
 	}
 
-	// Managing control on value via ui elements TextEdit and Slider
-	void ValueChanged(float newValue, Action<float> setter)
+
+	void ManageVelocityChange(float newValue) {
+		if(!VelocityKnob.IsSimRunning) {
+			VelocityKnob.StartSim(newValue);
+		}
+		else {
+			if(newValue != 0f) {
+				VelocityKnob.UpdateSim(newValue);
+			} else {
+				VelocityKnob.StopSim();
+			}
+		}
+	}
+
+	void ManageOffsetSend(float newValue)
 	{
-		try
-		{
-			setter(newValue);
-		}
-		catch (Exception)
-		{
-			EventLogger.LogMessage("ValueChanged", EventLogger.LogLevel.Warning, "Exeption in ValueChanged");
-		}
+		OffsetKnob.StartSimSingle(newValue);
 	}
 
 
@@ -282,9 +302,8 @@ public partial class CalibrateControl : Panel
 		CalibrateController.StartVelocity(vescId, VelocityValue);
 	}
 
-	void VelocityUp()
-	{
-		CalibrateController.StopVelocity();
+	void VelocityUp() {
+		CalibrateController.StopVelocitySafe();
 	}
 
 

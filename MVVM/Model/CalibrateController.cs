@@ -9,25 +9,54 @@ namespace RoverControlApp.MVVM.Model;
 
 public static class CalibrateController
 {
-	// Velocity Managers
+	public static event Action<float>? VelocityChanged;
+	public static event Action<float>? OffsetSend;
+
 	private static VelocityManager? _velocityManager = null;
 	private static readonly object _velocityManagerLock = new();
 
 	private static int _lastActionInt = (int)LastActions.None;
-	public const int _intervalMs = 200;
+	public const int _intervalMs = 100;
+
+	private class VelocityManager
+	{
+		public CancellationTokenSource Cts;
+		public Task? Worker;
+		public readonly Guid OperationId;
+		public readonly byte VescId;
+
+		public volatile float _velocity;
+		public float Velocity
+		{
+			get => _velocity; set
+			{
+				_velocity = value;
+				VelocityChanged?.Invoke(value);
+			}
+		}
+
+		public VelocityManager(CancellationTokenSource cts, float initialVelocity, byte vescId)
+		{
+			Cts = cts;
+			Velocity = initialVelocity;
+			OperationId = Guid.NewGuid();
+			VescId = vescId;
+		}
+	}
+
+
+	public enum LastActions
+	{
+		None,
+		Action,
+		Offset,
+		VelocityStarted,
+		VelocityRunning,
+		VelocityStopped
+	}
 
 	public static LastActions LastAction => (LastActions)Volatile.Read(ref _lastActionInt);
 
-	// Changing the Last Actions
-	private static void ChangeLastAction(int action)
-	{
-		int prevInt = Interlocked.Exchange(ref _lastActionInt, action);
-		var prevAction = (LastActions)prevInt;
-		EventLogger.LogMessage(nameof(CalibrateController), EventLogger.LogLevel.Verbose,
-			$"LastAction changed: {prevAction} -> {(LastActions)action}");
-	}
-
-	// Maping CalibrateAxisAction to the LastActions
 	private static LastActions MapActionToLastAction(MqttClasses.CalibrateAxisAction mqttAction)
 	{
 		return mqttAction switch
@@ -42,35 +71,15 @@ public static class CalibrateController
 		};
 	}
 
-	// For Managing the Velocity, can by change by pad input
-	private class VelocityManager
+	private static void ChangeLastAction(int action)
 	{
-		public CancellationTokenSource Cts;
-		public Task? Worker;
-		public volatile float Velocity;
-		public readonly Guid OperationId;
-		public readonly byte VescId;
-
-		public VelocityManager(CancellationTokenSource cts, float initialVelocity, byte vescId)
-		{
-			Cts = cts;
-			Velocity = initialVelocity;
-			OperationId = Guid.NewGuid();
-			VescId = vescId;
-		}
+		int prevInt = Interlocked.Exchange(ref _lastActionInt, action);
+		var prevAction = (LastActions)prevInt;
+		EventLogger.LogMessage(nameof(CalibrateController), EventLogger.LogLevel.Verbose,
+			$"LastAction changed: {prevAction} -> {(LastActions)action}");
 	}
 
-	// Last actions to help track and maintain conditions
-	public enum LastActions
-	{
-		None,
-		Action,
-		Offset,
-		VelocityStarted,
-		VelocityStopped
-	}
 
-	// Main function to send the message via mqtt
 	public static async Task<bool> SendCalibrateAxisAsync(
 		MqttClasses.CalibrateAxisAction actionType,
 		byte vescId,
@@ -82,21 +91,21 @@ public static class CalibrateController
 	{
 		try
 		{
-			if (updateLastAction)
-			{
-				var mapped = MapActionToLastAction(actionType);
-				ChangeLastAction((int)mapped);
-			}
-
-			if (
-				PressedKeys.Singleton.ControlMode != MqttClasses.ControlMode.EStop &&
-				LastAction != LastActions.Action && LastAction != LastActions.None
-			)
-			{
+			var mapped = MapActionToLastAction(actionType);
+			
+			if (PressedKeys.Singleton.ControlMode != MqttClasses.ControlMode.EStop) {
 				EventLogger.LogMessage(nameof(CalibrateController), EventLogger.LogLevel.Warning,
 					"ControlMode is not in EStop mode. Not sending CalibrateAxis.");
 				return false;
 			}
+
+			if ((LastAction == LastActions.Action || LastAction == LastActions.None) && mapped == LastActions.Action){
+				EventLogger.LogMessage(nameof(CalibrateController), EventLogger.LogLevel.Warning,
+					"Action was sended. Waiting for changes.");
+				return false;
+			}
+
+			if (updateLastAction) ChangeLastAction((int)mapped);
 
 			var msg = new MqttClasses.CalibrateAxis
 			{
@@ -137,7 +146,7 @@ public static class CalibrateController
 		}
 	}
 
-	// Function for handling the actions
+
 	public static async Task<bool> SendCalibrateActionAsync(
 		MqttClasses.CalibrateAxisAction actionType,
 		byte vescId,
@@ -146,11 +155,11 @@ public static class CalibrateController
 		MqttQualityOfServiceLevel qos = MqttQualityOfServiceLevel.AtMostOnce,
 		bool retain = false)
 	{
-		StopVelocity(); // Before making to stop velocity manager before sending an action
+		StopVelocitySafe(); // Before making to stop velocity manager before sending an action
 		return await SendCalibrateAxisAsync(actionType, vescId, value, timestamp, qos, retain).ConfigureAwait(false);
 	}
 
-	// Small functions for every button
+
 	public static Task<bool> SendStopAsync(byte vescId) =>
 		SendCalibrateActionAsync(MqttClasses.CalibrateAxisAction.Stop, vescId);
 
@@ -163,12 +172,12 @@ public static class CalibrateController
 	public static Task<bool> SendCancelAsync(byte vescId) =>
 		SendCalibrateActionAsync(MqttClasses.CalibrateAxisAction.Cancel, vescId);
 
-	public static Task<bool> SendOffsetAsync(byte vescId, float value) =>
-		SendCalibrateActionAsync(MqttClasses.CalibrateAxisAction.Offset, vescId, value);
+	public static Task<bool> SendOffsetAsync(byte vescId, float value) {
+		OffsetSend?.Invoke(value);
+		return SendCalibrateActionAsync(MqttClasses.CalibrateAxisAction.Offset, vescId, value);
+	}
+		
 
-	/// <summary>
-	/// 
-	/// </summary>
 	public static bool StartVelocity(byte vescId, float initialVelocity, int intervalMs = _intervalMs)
 	{
 		if (PressedKeys.Singleton.ControlMode != MqttClasses.ControlMode.EStop) return false;
@@ -235,6 +244,7 @@ public static class CalibrateController
 					{
 						try
 						{
+							VelocityChanged?.Invoke(0f);
 							ChangeLastAction((int)LastActions.VelocityStopped);
 							await Task.Delay(intervalMs).ConfigureAwait(false);
 							await SendCalibrateAxisAsync(MqttClasses.CalibrateAxisAction.SetVelocity, vescId, 0f, updateLastAction: false).ConfigureAwait(false);
@@ -256,9 +266,6 @@ public static class CalibrateController
 		}
 	}
 
-	/// <summary>
-	/// 
-	/// </summary>
 	public static bool IsVelocityRunning()
 	{
 		lock (_velocityManagerLock)
@@ -267,9 +274,6 @@ public static class CalibrateController
 		}
 	}
 
-	/// <summary>
-	/// 
-	/// </summary>
 	public static bool UpdateVelocity(float newVelocity)
 	{
 		lock (_velocityManagerLock)
@@ -288,9 +292,10 @@ public static class CalibrateController
 		return false;
 	}
 
-	/// <summary>
-	/// 
-	/// </summary>
+	public static void StopVelocitySafe() {
+		if(IsVelocityRunning()) StopVelocity();
+	}
+
 	public static bool StopVelocity()
 	{
 		VelocityManager? manager;
@@ -320,6 +325,7 @@ public static class CalibrateController
 					$"StopVelocity: failed to send final zero for vesc {manager.VescId}: {ex.Message}; op={manager.OperationId}");
 			}
 
+			VelocityChanged?.Invoke(0f);
 			ChangeLastAction((int)LastActions.VelocityStopped);
 
 			try { manager.Cts.Cancel(); } catch { }
