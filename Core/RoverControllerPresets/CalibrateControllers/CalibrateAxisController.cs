@@ -37,13 +37,9 @@ public class CalibrateAxisController : IRoverCalibrateController
 
 	public bool HandleInput(in InputEvent inputEvent, DualSeatEvent.InputDevice targetInputDevice)
 	{
-		// Making sure to hold or press wheel to activate the Calibration Mode
-		if (!OperateMode(inputEvent, targetInputDevice)) {
-			CalibrateController.StopVelocitySafe();
+		if (!OperateMode(inputEvent, targetInputDevice))
 			return false;
-		}
 
-		// Making sure the panel is visible. Making it more safe, to not calibrate if don't wanted to
 		if (LocalSettingsMemory.Singleton.CalibrateAxis.PanelVisibilty != true) {
 			CalibrateController.StopVelocitySafe();
 			return false;
@@ -59,7 +55,7 @@ public class CalibrateAxisController : IRoverCalibrateController
 	}
 
 
-	private bool OperateMode(in InputEvent inputEvent, DualSeatEvent.InputDevice targetInputDevice)
+	public bool OperateMode(in InputEvent inputEvent, DualSeatEvent.InputDevice targetInputDevice)
 	{
 		switch (LocalSettings.Singleton.Joystick.ToggleableKinematics)
 		{
@@ -67,11 +63,13 @@ public class CalibrateAxisController : IRoverCalibrateController
 			case true when inputEvent.IsActionPressed(DualSeatEvent.GetName(RcaInEvName.CalibrateMode, targetInputDevice), allowEcho: false, exactMatch: true):
 				return true;
 			case true: // Toggle with no action
+				CalibrateController.StopVelocitySafe();
 				return false;
 			// Hold
 			case false when Input.IsActionPressed(DualSeatEvent.GetName(RcaInEvName.CalibrateMode, targetInputDevice), exactMatch: true):
 				return true;
 			case false: // default for hold
+				CalibrateController.StopVelocitySafe();
 				return false;
 		}
 	}
@@ -132,7 +130,9 @@ public class CalibrateAxisController : IRoverCalibrateController
 		// Don't run i bumper are not moved and the action is not yet started
 		if (rotateBumpers == 0f && lastAction != CalibrateController.LastActions.VelocityStarted) return;
 
-		if (lastBumperValue != 0f && lastAction != CalibrateController.LastActions.VelocityRunning) return;
+		if (lastBumperValue != 0f && lastAction == CalibrateController.LastActions.Action) return;
+		if (lastBumperValue != 0f && lastAction == CalibrateController.LastActions.Offset) return;
+		if (lastBumperValue != 0f && lastAction == CalibrateController.LastActions.VelocityStopped) return;
 
 		// Getting accual vescId
 		byte vescId = LocalSettingsMemory.Singleton.CalibrateAxis.ChoosenAxis;

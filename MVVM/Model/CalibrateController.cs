@@ -28,8 +28,7 @@ public static class CalibrateController
 		public volatile float _velocity;
 		public float Velocity
 		{
-			get => _velocity; set
-			{
+			get => _velocity; set {
 				_velocity = value;
 				VelocityChanged?.Invoke(value);
 			}
@@ -92,13 +91,14 @@ public static class CalibrateController
 		try
 		{
 			var mapped = MapActionToLastAction(actionType);
-			
-			if (PressedKeys.Singleton.ControlMode != MqttClasses.ControlMode.EStop) {
+
+			if (PressedKeys.Singleton.ControlMode != MqttClasses.ControlMode.EStop && LastAction != LastActions.VelocityStopped) {
 				EventLogger.LogMessage(nameof(CalibrateController), EventLogger.LogLevel.Warning,
 					"ControlMode is not in EStop mode. Not sending CalibrateAxis.");
 				return false;
 			}
 
+			// Prevent Sending Action after Action
 			if ((LastAction == LastActions.Action || LastAction == LastActions.None) && mapped == LastActions.Action){
 				EventLogger.LogMessage(nameof(CalibrateController), EventLogger.LogLevel.Warning,
 					"Action was sended. Waiting for changes.");
@@ -204,6 +204,7 @@ public static class CalibrateController
 
 				try
 				{
+					ChangeLastAction((int)LastActions.VelocityRunning);
 					while (!token.IsCancellationRequested)
 					{
 						try

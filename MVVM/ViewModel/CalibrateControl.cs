@@ -14,10 +14,8 @@ public partial class CalibrateControl : Panel
 	[Export] private Button[] AxisButtons = new Button[4];
 	[Export] private OptionButton AxisOptions = new OptionButton();
 
-	[ExportGroup("Offset")]
+	[ExportGroup("Knobs")]
 	[Export] public Knob OffsetKnob = new Knob();
-
-	[ExportGroup("Velocity")]
 	[Export] public Knob VelocityKnob = new Knob();
 
 	[ExportGroup("Actions Button")]
@@ -212,13 +210,8 @@ public partial class CalibrateControl : Panel
 
 	void OnVisibilityChanged() {
 		CalibrateEnabled = Visible;
-		if (
-			CalibrateEnabled == false &&
-			CalibrateController.LastAction != CalibrateController.LastActions.Action &&
-			CalibrateController.LastAction != CalibrateController.LastActions.None
-		)
-			if (TryGetSelectedVescId(out byte vesc))
-				CalibrateController.SendCancelAsync(vesc);
+		if (!CalibrateEnabled)
+			CancelClicked();
 	}
 
 
@@ -230,18 +223,9 @@ public partial class CalibrateControl : Panel
 		EventLogger.LogMessage("CalibrateControl", EventLogger.LogLevel.Info, $"ControlMode Changed to {newMode}");
 
 		// Making sure to Cancel if no action provided before changing the ControlMode
-		if (
-			newMode != MqttClasses.ControlMode.EStop &&
-			(CalibrateController.LastAction != CalibrateController.LastActions.Action &&
-			CalibrateController.LastAction != CalibrateController.LastActions.None)
-		)
-		{
-			if (_vescId != byte.MaxValue)
-			{
-				// Stop velocities to avoid conflicts, then send Cancel
-				CalibrateController.StopVelocitySafe();
-				CalibrateController.SendCancelAsync(_vescId);
-			}
+		if (newMode != MqttClasses.ControlMode.EStop) 	{
+			CalibrateController.StopVelocitySafe();
+			CancelClicked();
 		}
 
 		return Task.CompletedTask;
@@ -290,8 +274,7 @@ public partial class CalibrateControl : Panel
 		}
 	}
 
-	void ManageOffsetSend(float newValue)
-	{
+	void ManageOffsetSend(float newValue) {
 		OffsetKnob.StartSimSingle(newValue);
 	}
 

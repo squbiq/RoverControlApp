@@ -62,6 +62,14 @@ public partial class Knob : Control
 
 	[ExportGroup("Simulation")]
 	[Export] public int SimulationWidth { get; set; } = 16;
+
+	[Export] public float SimValue {
+		get => _simulationValue; set {
+			_simulationValue = value;
+			QueueRedraw();
+		}
+	}
+
 	[Export] public SimulationMode SimMode { get; set; } = SimulationMode.Off;
 	[Export(PropertyHint.Range, "0.05,10,0.01")] public float SimulationDuration { get; set; } = 1.0f;
 
@@ -111,7 +119,7 @@ public partial class Knob : Control
 			if (SimulationDuration <= 0.0001f) SimulationDuration = 0.0001f;
 			_autoPhase += d * (Mathf.Pi * 2f) / SimulationDuration;
 			float t = (Mathf.Sin(_autoPhase) * 0.5f) + 0.5f;
-			_simulationValue = MapTToValue(ApplyEasing(t));
+			SimValue = MapTToValue(ApplyEasing(t));
 			QueueRedraw();
 			return;
 		}
@@ -140,7 +148,7 @@ public partial class Knob : Control
 					_singleProgress = 0f;
 					_singleActive = false;
 					_singleReturning = false;
-					_simulationValue = GetBaseForSingle();
+					SimValue = GetBaseForSingle();
 					SimMode = SimulationMode.Off;
 					QueueRedraw();
 					return;
@@ -148,7 +156,7 @@ public partial class Knob : Control
 			}
 
 			float eased = ApplyEasing(Mathf.Clamp(_singleProgress, 0f, 1f));
-			_simulationValue = Mathf.Lerp(_singleStartValue, _singleTarget, eased);
+			SimValue = Mathf.Lerp(_singleStartValue, _singleTarget, eased);
 			QueueRedraw();
 		}
 	}
@@ -168,7 +176,7 @@ public partial class Knob : Control
 			SimMode = sm;
 
 		if (SimMode != SimulationMode.Single)
-			_simulationValue = clampedTarget;
+			SimValue = clampedTarget;
 
 		SetProcess(true);
 		QueueRedraw();
@@ -176,7 +184,7 @@ public partial class Knob : Control
 
 	public void StartSimSingle(float target) {
 		_singleStartValue = GetBaseForSingle();
-		_simulationValue = _singleStartValue;
+		SimValue = _singleStartValue;
 
 		_singleTarget = ClampValue(target);
 		_singleProgress = 0f;
@@ -196,7 +204,7 @@ public partial class Knob : Control
 	public void UpdateSim(float value)
 	{
 		if (!IsProcessing()) return;
-		_simulationValue = ClampValue(value);
+		SimValue = ClampValue(value);
 	}
 
 	public void StopSim()
@@ -205,7 +213,7 @@ public partial class Knob : Control
 		_singleActive = false;
 		_singleReturning = false;
 		_singleProgress = 0f;
-		_simulationValue = GetBaseForSingle();
+		SimValue = GetBaseForSingle();
 		QueueRedraw();
 		SetProcess(false);
 	}

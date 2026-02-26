@@ -284,9 +284,14 @@ public partial class PressedKeys : Node
 			bool isInputHandled =
 				_roverCameraControllerPreset.HandleInput(inputEvent, DualSeatEvent.InputDevice.Master, _cameraMoveVector, out _);
 
-			if (isInputHandled)
-				EventLogger.LogMessage(nameof(PressedKeys), EventLogger.LogLevel.Verbose, "PedanticEstop is enabled. Input rejected.");
-			return false;
+			bool isCalibrateActive =
+				_roverCalibrateControllerPreset.OperateMode(inputEvent, DualSeatEvent.InputDevice.Master);
+
+			if(!isCalibrateActive) {
+				if (isInputHandled)
+					EventLogger.LogMessage(nameof(PressedKeys), EventLogger.LogLevel.Verbose, "PedanticEstop is enabled. Input rejected.");
+				return false;
+			}
 		}
 
 		// rover control
@@ -393,7 +398,7 @@ public partial class PressedKeys : Node
 		switch (_slaveControlMode)
 		{
 			case ControlMode.EStop:
-				if (_roverCalibrateControllerPreset.HandleInput(inputEvent, DualSeatEvent.InputDevice.Master))
+				if (_roverCalibrateControllerPreset.HandleInput(inputEvent, DualSeatEvent.InputDevice.Slave))
 				{
 					OnAcceptedInput(inputEvent);
 					EventLogger.LogMessageDebug(nameof(PressedKeys), EventLogger.LogLevel.Verbose, "Input handled as (Master) RoverEstop");

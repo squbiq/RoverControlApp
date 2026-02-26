@@ -19,4 +19,9 @@ public interface IRoverCalibrateController : IActionAwareController
 		return true;
 	}
 
+	/// <summary>
+	/// Checks InputEvent and returns if wants to operate Calibrate changes
+	/// </summary>
+	public bool OperateMode(in InputEvent inputEvent, DualSeatEvent.InputDevice targetInputDevice);
+
 }
