@@ -2,7 +2,7 @@
 
 [ext_resource type="Script" path="res://MVVM/ViewModel/BatteryMonitor.cs" id="1_ktc3a"]
 [ext_resource type="PackedScene" uid="uid://cdbeb0yegexne" path="res://MVVM/View/SubBattery.tscn" id="2_4ptu6"]
-[ext_resource type="PackedScene" uid="uid://c0s64advyk2p4" path="res://Controls/DraggablePanel.tscn" id="3_d354j"]
+[ext_resource type="PackedScene" uid="uid://c0s64advyk2p4" path="res://MVVM/View/DraggablePanel.tscn" id="3_d354j"]
 
 [node name="BatteryMonitor" type="Panel" node_paths=PackedStringArray("battery", "_vescVoltageLabel", "_battVoltageLabel", "_sumCurrentLabel", "_blackMushroomLabel", "_hotswapGPIO", "_vescUpdateTimer")]
 custom_minimum_size = Vector2(434, 351)

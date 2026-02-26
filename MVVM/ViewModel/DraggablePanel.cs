@@ -1,5 +1,4 @@
 ﻿using Godot;
-using RoverControlApp.Core;
 
 [Tool]
 public partial class DraggablePanel : Control
@@ -23,6 +22,7 @@ public partial class DraggablePanel : Control
     [Export] public bool BringToFrontOnDrag = true;
 	[Export] public bool ShowTheCloseButton = true;
 	[Export] public bool ReturnToStartOnClose = true;
+	[Export] public bool AlwaysOnTop = false;
 
 	private Control _sceneRoot = null!;
 	private bool _dragging = false;
@@ -40,6 +40,7 @@ public partial class DraggablePanel : Control
 		if (!Engine.IsEditorHint() && CloseButton != null)
             CloseButton.Pressed += OnClosePressed;
 
+		_sceneRoot.VisibilityChanged += OnVisibilityChange;
 		UpdateVisuals();
     }
 
@@ -104,8 +105,11 @@ public partial class DraggablePanel : Control
 		foreach (Node node in parent.GetChildren())
 		{
 			if (node == _sceneRoot) continue;
-			if (node is Panel other && other.Visible == true)
-			{
+			if (node is Panel other && other.Visible == true) {
+				DraggablePanel otherPanel = other.GetNode<DraggablePanel>(nameof(DraggablePanel));
+				if (otherPanel != null && otherPanel.AlwaysOnTop == true)
+					return true;
+
 				Rect2 otherRect = other.GetGlobalRect();
 				if (mouseRect.Intersects(otherRect))
 					if(other.GetIndex() > _sceneRoot.GetIndex())
@@ -118,9 +122,7 @@ public partial class DraggablePanel : Control
 
 	private void UpdateVisuals()
     {
-
-        if (TitleLabel != null)
-        {
+        if (TitleLabel != null) {
             TitleLabel.Text = WindowTitle;
             TitleLabel.AddThemeColorOverride("font_color", TitleTextColor);
         }
@@ -151,9 +153,9 @@ public partial class DraggablePanel : Control
         SetWindowVisible(false);
     }
 
-	public void SetWindowVisible(bool value)
-    {
-        if (_sceneRoot == null)
+	public void SetWindowVisible(bool value) {
+
+		if (_sceneRoot == null)
             return;
 
 		_sceneRoot.Visible = value;
@@ -161,6 +163,13 @@ public partial class DraggablePanel : Control
 		if (!value && ReturnToStartOnClose)
             _sceneRoot.Position = _startPosition;
     }
+
+	public void OnVisibilityChange() {
+		if (AlwaysOnTop && Visible == true) {
+			var parent = _sceneRoot.GetParent();
+			parent?.MoveChild(_sceneRoot, parent.GetChildCount() - 1);
+		}
+	}
 
 	private void ClampToScreen()
     {

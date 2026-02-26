@@ -9,6 +9,14 @@ public partial class CalibrateControl : Panel
 {
 	private enum HookAction { Enter, Exit }
 
+	private enum Wheel {
+		None = -1,
+		FrontLeft,
+		FrontRight,
+		RearLeft,
+		RearRight
+	}
+
 	[ExportGroup("Axis")]
 	[Export] private Sprite2D[] AxisModels = new Sprite2D[4];
 	[Export] private Button[] AxisButtons = new Button[4];
@@ -32,7 +40,8 @@ public partial class CalibrateControl : Panel
 	private Action?[] _AxisBtnHandlers = Array.Empty<Action?>();
 
 	private bool _calibrateEnabled = true;
-	private int _wheelValue = -1; // -1 -> none, 0 to 3 - FL, FR, BL, BR
+	private Wheel _wheelValue = Wheel.None;
+
 	private byte _vescId = byte.MaxValue;
 	private float _offsetValue = 1.0f;
 	private float _velocityValue = 1.0f;
@@ -70,10 +79,10 @@ public partial class CalibrateControl : Panel
 
 	private int WheelValue
 	{
-		get => _wheelValue;
+		get => (int)_wheelValue;
 		set
 		{
-			_wheelValue = value;
+			_wheelValue = (Wheel)value;
 			if (TryGetSelectedVescId(out var vescId))
 			{
 				_vescId = vescId;
@@ -84,16 +93,16 @@ public partial class CalibrateControl : Panel
 
 
 	// Getting the VescID from WheelData in LocalSettings with conversion from string to byte
-	private byte GetVescId(int wheelID)
+	private byte GetVescId(Wheel wheelID)
 	{
 		try
 		{
 			var raw = wheelID switch
 			{
-				0 => LocalSettings.Singleton.WheelData.FrontLeftTurn,
-				1 => LocalSettings.Singleton.WheelData.FrontRightTurn,
-				2 => LocalSettings.Singleton.WheelData.BackLeftTurn,
-				3 => LocalSettings.Singleton.WheelData.BackRightTurn,
+				Wheel.FrontLeft => LocalSettings.Singleton.WheelData.FrontLeftTurn,
+				Wheel.FrontRight => LocalSettings.Singleton.WheelData.FrontRightTurn,
+				Wheel.RearLeft => LocalSettings.Singleton.WheelData.BackLeftTurn,
+				Wheel.RearRight => LocalSettings.Singleton.WheelData.BackRightTurn,
 				_ => string.Empty
 			};
 
@@ -114,8 +123,7 @@ public partial class CalibrateControl : Panel
 	{
 		vescId = byte.MaxValue;
 
-		if (_wheelValue < 0 || _wheelValue >= AxisModels.Length)
-		{
+		if (_wheelValue == Wheel.None) {
 			EventLogger.LogMessage("CalibrateControl", EventLogger.LogLevel.Warning, "No wheel selected.");
 			return false;
 		}

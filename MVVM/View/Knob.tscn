@@ -1,6 +1,6 @@
 [gd_scene load_steps=2 format=3 uid="uid://btgw883t4vf4r"]
 
-[ext_resource type="Script" path="res://Controls/Knob.cs" id="1_pyoxg"]
+[ext_resource type="Script" path="res://MVVM/ViewModel/Knob.cs" id="1_pyoxg"]
 
 [node name="Knob" type="Control" node_paths=PackedStringArray("title", "edit")]
 custom_minimum_size = Vector2(120, 120)

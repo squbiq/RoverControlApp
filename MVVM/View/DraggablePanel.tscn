@@ -1,6 +1,6 @@
 [gd_scene load_steps=4 format=3 uid="uid://c0s64advyk2p4"]
 
-[ext_resource type="Script" path="res://Controls/DraggablePanel.cs" id="1_0q6tn"]
+[ext_resource type="Script" path="res://MVVM/ViewModel/DraggablePanel.cs" id="1_0q6tn"]
 [ext_resource type="Texture2D" uid="uid://c4ilroe36crd2" path="res://Resources/icons/cross-small.svg" id="2_4lcwb"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_hoc6c"]

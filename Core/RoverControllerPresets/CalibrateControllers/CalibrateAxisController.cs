@@ -3,7 +3,7 @@ using RoverControlApp.MVVM.Model;
 using System;
 using System.Collections.Generic;
 
-namespace RoverControlApp.Core.RoverControllerPresets.DriveControllers;
+namespace RoverControlApp.Core.RoverControllerPresets.CalibrateAxisController;
 
 // Zmiana velocity podczas trzymania velocity na padzie
 
@@ -98,7 +98,7 @@ public class CalibrateAxisController : IRoverCalibrateController
 		bool canTriggerRight = x >= primaryThreshold;
 
 		int trueCount = (canTriggerLeft ? 1 : 0) + (canTriggerRight ? 1 : 0);
-		if (trueCount != 1) { return; }
+		if (trueCount != 1) return;
 
 		// Getting the wheel and increment according to the action
 		int wheel = LocalSettingsMemory.Singleton.CalibrateAxis.ChoosenWheel;
@@ -130,9 +130,13 @@ public class CalibrateAxisController : IRoverCalibrateController
 		// Don't run i bumper are not moved and the action is not yet started
 		if (rotateBumpers == 0f && lastAction != CalibrateController.LastActions.VelocityStarted) return;
 
-		if (lastBumperValue != 0f && lastAction == CalibrateController.LastActions.Action) return;
-		if (lastBumperValue != 0f && lastAction == CalibrateController.LastActions.Offset) return;
-		if (lastBumperValue != 0f && lastAction == CalibrateController.LastActions.VelocityStopped) return;
+		if (lastBumperValue != 0f)
+			if (
+				lastAction == CalibrateController.LastActions.Action ||
+				lastAction == CalibrateController.LastActions.Offset ||
+				lastAction == CalibrateController.LastActions.VelocityStopped
+			)
+				return;
 
 		// Getting accual vescId
 		byte vescId = LocalSettingsMemory.Singleton.CalibrateAxis.ChoosenAxis;
@@ -173,7 +177,7 @@ public class CalibrateAxisController : IRoverCalibrateController
 		bool right = inputEvent.IsActionPressed(DualSeatEvent.GetName(RcaInEvName.CalibrateRotateRightOnce, targetInputDevice));
 
 		// Making sure the are not pressed together
-		if ((!left && !right) || (left && right)) return;
+		if (left == right) return;
 
 		// Gettings vesc id
 		byte vescId = LocalSettingsMemory.Singleton.CalibrateAxis.ChoosenAxis;
@@ -183,8 +187,8 @@ public class CalibrateAxisController : IRoverCalibrateController
 		float offset = Mathf.Abs(LocalSettingsMemory.Singleton.CalibrateAxis.OffsetValue);
 		if (offset == 0f) return;
 
-		if (left) { CalibrateController.SendOffsetAsync(vescId, (-1) * offset); }
-		if (right) { CalibrateController.SendOffsetAsync(vescId, offset); }
+		if (left) CalibrateController.SendOffsetAsync(vescId, (-1) * offset);
+		if (right) CalibrateController.SendOffsetAsync(vescId, offset);
 	}
 
 	private void ActionHandler(in InputEvent inputEvent, DualSeatEvent.InputDevice targetInputDevice)
@@ -195,8 +199,8 @@ public class CalibrateAxisController : IRoverCalibrateController
 		bool bottom = inputEvent.IsActionPressed(DualSeatEvent.GetName(RcaInEvName.CalibrateActionBottom, targetInputDevice));
 		bool top = inputEvent.IsActionPressed(DualSeatEvent.GetName(RcaInEvName.CalibrateActionTop, targetInputDevice));
 
-		int i = (left ? 1 : 0) + (right ? 1 : 0) + (bottom ? 1 : 0) + (top ? 1 : 0);
-		if (i != 1) return; // Block if clicked together
+		bool i = left ^ right ^ bottom ^ top;
+		if (!i) return; // Block if clicked together
 
 		// Gettings vesc id
 		byte vescId = LocalSettingsMemory.Singleton.CalibrateAxis.ChoosenAxis;

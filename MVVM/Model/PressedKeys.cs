@@ -1,17 +1,14 @@
-﻿using System;
-using System.Threading.Tasks;
-
-using Godot;
-
+﻿using Godot;
 using RoverControlApp.Core;
 using RoverControlApp.Core.RoverControllerPresets;
 using RoverControlApp.Core.RoverControllerPresets.CameraControllers;
 using RoverControlApp.Core.RoverControllerPresets.ControlModeControllers;
 using RoverControlApp.Core.RoverControllerPresets.ManipulatorControllers;
-using RoverControlApp.Core.RoverControllerPresets.DriveControllers;
+using RoverControlApp.Core.RoverControllerPresets.CalibrateAxisController;
 using RoverControlApp.Core.RoverControllerPresets.SamplerControllers;
 using RoverControlApp.MVVM.ViewModel;
-
+using System;
+using System.Threading.Tasks;
 using static RoverControlApp.Core.MqttClasses;
 
 namespace RoverControlApp.MVVM.Model;
@@ -383,9 +380,14 @@ public partial class PressedKeys : Node
 			bool isInputHandled =
 				_roverCameraControllerPreset.HandleInput(inputEvent, DualSeatEvent.InputDevice.Slave, _cameraMoveVector, out _);
 
-			if (isInputHandled)
-				EventLogger.LogMessage(nameof(PressedKeys), EventLogger.LogLevel.Verbose, "PedanticEstop is enabled. Input rejected.");
-			return false;
+			bool isCalibrateActive =
+				_roverCalibrateControllerPreset.OperateMode(inputEvent, DualSeatEvent.InputDevice.Slave);
+
+			if (!isCalibrateActive) {
+				if (isInputHandled)
+					EventLogger.LogMessage(nameof(PressedKeys), EventLogger.LogLevel.Verbose, "PedanticEstop is enabled. Input rejected.");
+				return false;
+			}
 		}
 
 		// rover control

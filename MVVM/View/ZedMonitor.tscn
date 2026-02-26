@@ -2,7 +2,7 @@
 
 [ext_resource type="Texture2D" uid="uid://ubenmvj4p5x2" path="res://Resources/icon.svg" id="1_esmsg"]
 [ext_resource type="Script" path="res://MVVM/ViewModel/ZedMonitor.cs" id="1_uhht3"]
-[ext_resource type="PackedScene" uid="uid://c0s64advyk2p4" path="res://Controls/DraggablePanel.tscn" id="3_0ogm8"]
+[ext_resource type="PackedScene" uid="uid://c0s64advyk2p4" path="res://MVVM/View/DraggablePanel.tscn" id="3_0ogm8"]
 
 [node name="ZedMonitor" type="Panel" node_paths=PackedStringArray("pitchVisualisation", "rollVisualisation", "pitchDisplay", "rollDisplay", "errorDisplay", "timer", "timerDisplay")]
 offset_right = 209.0

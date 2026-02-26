@@ -2,7 +2,7 @@
 
 [ext_resource type="Script" path="res://MVVM/ViewModel/SettingsManager.cs" id="1_pihm0"]
 [ext_resource type="Script" path="res://MVVM/ViewModel/SettingsManagerTree.cs" id="2_mu20m"]
-[ext_resource type="PackedScene" uid="uid://c0s64advyk2p4" path="res://Controls/DraggablePanel.tscn" id="3_r2l08"]
+[ext_resource type="PackedScene" uid="uid://c0s64advyk2p4" path="res://MVVM/View/DraggablePanel.tscn" id="3_r2l08"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_sy7lu"]
 bg_color = Color(0, 0.45098, 0.545098, 1)
@@ -110,6 +110,7 @@ layout_mode = 1
 WindowTitle = "Settings"
 TitleBarColor = Color(0, 0.45098, 0.545098, 1)
 ShowTheCloseButton = false
+AlwaysOnTop = true
 
 [connection signal="pressed" from="StatusBar/Reverters/RevertSettings" to="." method="OnRevertSettingsPressed"]
 [connection signal="pressed" from="StatusBar/Reverters/ForceDefaultSettings" to="." method="OnForceDefaultSettingsPressed"]
