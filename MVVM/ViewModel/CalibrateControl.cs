@@ -124,7 +124,7 @@ public partial class CalibrateControl : Panel
 		vescId = byte.MaxValue;
 
 		if (_wheelValue == Wheel.None) {
-			EventLogger.LogMessage("CalibrateControl", EventLogger.LogLevel.Warning, "No wheel selected.");
+			EventLogger.LogMessage("CalibrateControl", EventLogger.LogLevel.Verbose, "No wheel selected.");
 			return false;
 		}
 
@@ -172,11 +172,18 @@ public partial class CalibrateControl : Panel
 		}
 		OffsetValue = Convert.ToSingle(OffsetKnob.Value);
 		VelocityValue = Convert.ToSingle(VelocityKnob.Value);
+		VelocityKnob.UpdateRange(
+				LocalSettings.Singleton.Calibration.CalibrationMotor.MinSpeed,
+				LocalSettings.Singleton.Calibration.CalibrationMotor.MaxSpeed
+		);
 		CalibrateEnabled = PanelCover.Visible;
 
 		LocalSettingsMemory.Singleton.Connect(LocalSettingsMemory.SignalName.PropagatedPropertyChanged,
 			Callable.From<StringName, StringName, Variant, Variant>(OnSettingsMemoryPropertyChanged)
 		);
+
+		LocalSettings.Singleton.Connect(LocalSettings.SignalName.PropagatedSubcategoryChanged,
+			Callable.From<StringName, StringName, Variant, Variant>(OnSettingsPropertyChanged));
 	}
 
 	public override void _ExitTree()
@@ -204,6 +211,9 @@ public partial class CalibrateControl : Panel
 		Disconnect("visibility_changed", new Callable(this, nameof(OnVisibilityChanged)));
 		LocalSettingsMemory.Singleton.Disconnect(LocalSettingsMemory.SignalName.PropagatedPropertyChanged,
 			Callable.From<StringName, StringName, Variant, Variant>(OnSettingsMemoryPropertyChanged));
+
+		LocalSettings.Singleton.Disconnect(LocalSettings.SignalName.PropagatedSubcategoryChanged,
+			Callable.From<StringName, StringName, Variant, Variant>(OnSettingsPropertyChanged));
 	}
 
 
@@ -213,6 +223,19 @@ public partial class CalibrateControl : Panel
 
 		if (name == nameof(LocalSettingsMemory.CalibrateAxis.ChoosenWheel)) {
 			ChooseAxis(LocalSettingsMemory.Singleton.CalibrateAxis.ChoosenWheel);
+		}
+	}
+
+	void OnSettingsPropertyChanged(StringName category, StringName name, Variant oldValue, Variant newValue)
+	{
+		EventLogger.LogMessage(nameof(Knob), EventLogger.LogLevel.Info, $"category: {category}, name: {name}");
+		if (category != nameof(LocalSettings.Singleton.Calibration)) return;
+
+		if (name == nameof(LocalSettings.Singleton.Calibration.CalibrationMotor)) {
+			VelocityKnob.UpdateRange(
+				LocalSettings.Singleton.Calibration.CalibrationMotor.MinSpeed,
+				LocalSettings.Singleton.Calibration.CalibrationMotor.MaxSpeed
+			);
 		}
 	}
 

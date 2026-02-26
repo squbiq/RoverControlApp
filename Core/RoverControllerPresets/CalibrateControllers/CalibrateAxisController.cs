@@ -15,8 +15,8 @@ public class CalibrateAxisController : IRoverCalibrateController
 	private bool actionTriggered = false;     // prevents repeated triggers until center
 	private float lastBumperValue = 0f;
 
-	private float velocityMin = 2000f;
-	private float velocityMax = 10000f;
+	private float velocityMin = LocalSettings.Singleton.Calibration.CalibrationMotor.MinSpeed;
+	private float velocityMax = LocalSettings.Singleton.Calibration.CalibrationMotor.MaxSpeed;
 
 	private readonly StringName[] _usedActions =
 	[

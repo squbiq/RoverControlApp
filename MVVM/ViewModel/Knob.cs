@@ -1,4 +1,5 @@
 using Godot;
+using RoverControlApp.Core;
 using System;
 using System.Globalization;
 
@@ -331,6 +332,16 @@ public partial class Knob : Control
 	private void UpdateEditText()
 	{
 		if (edit != null) edit.Text = Math.Round(_value, 1).ToString(CultureInfo.InvariantCulture);
+	}
+	public void UpdateRange(float min, float max)
+	{
+		if (max <= min)
+			EventLogger.LogMessage(nameof(Knob), EventLogger.LogLevel.Info, "Min is greater or equals to Max, nothings change");
+
+		Min = min;
+		Max = max;
+		Value = Mathf.Clamp(Value, Min, Max);
+		QueueRedraw();
 	}
 
 	private void OnEditSubmitted(string text) => ApplyEditValue(text);
