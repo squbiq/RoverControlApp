@@ -1,7 +1,9 @@
 ﻿using Godot;
 using RoverControlApp.MVVM.Model;
+using RoverControlApp.MVVM.ViewModel;
 using System;
 using System.Collections.Generic;
+using static RoverControlApp.Core.MqttClasses;
 
 namespace RoverControlApp.Core.RoverControllerPresets.CalibrateAxisController;
 
@@ -15,8 +17,8 @@ public class CalibrateAxisController : IRoverCalibrateController
 	private bool actionTriggered = false;     // prevents repeated triggers until center
 	private float lastBumperValue = 0f;
 
-	private float velocityMin = LocalSettings.Singleton.Calibration.CalibrationMotor.MinSpeed;
-	private float velocityMax = LocalSettings.Singleton.Calibration.CalibrationMotor.MaxSpeed;
+	private float velocityMin => LocalSettings.Singleton.Calibration.CalibrationMotor.MinSpeed;
+	private float velocityMax => LocalSettings.Singleton.Calibration.CalibrationMotor.MaxSpeed;
 
 	private readonly StringName[] _usedActions =
 	[
@@ -40,11 +42,11 @@ public class CalibrateAxisController : IRoverCalibrateController
 		if (!OperateMode(inputEvent, targetInputDevice))
 			return false;
 
-		if (LocalSettingsMemory.Singleton.CalibrateAxis.PanelVisibilty != true) {
+		if (CalibrateController.Singleton.CalibrateAxisValues.CalibrateEnabled != true) {
 			CalibrateController.StopVelocitySafe();
 			return false;
 		}
-			
+
 		// Handlers
 		RotateBumper(inputEvent, targetInputDevice);
 		RotateOnce(inputEvent, targetInputDevice);
@@ -101,13 +103,17 @@ public class CalibrateAxisController : IRoverCalibrateController
 		if (trueCount != 1) return;
 
 		// Getting the wheel and increment according to the action
-		int wheel = LocalSettingsMemory.Singleton.CalibrateAxis.ChoosenWheel;
-		if (canTriggerLeft && wheel == -1) { wheel = 3; } else if (canTriggerLeft) { wheel--; } else { wheel++; }
+		CalibrateAxisWheel wheel = CalibrateController.Singleton.CalibrateAxisValues.ChoosenWheel;
+		if (canTriggerLeft && wheel == CalibrateAxisWheel.None)
+			wheel = CalibrateAxisWheel.RearRight;
+		else if (canTriggerLeft)
+			wheel--;
+		else
+			wheel++;
 
 		if (canTriggerLeft || canTriggerRight)
 		{
-			// Setting the incremeneted value
-			LocalSettingsMemory.Singleton.CalibrateAxis.ChoosenWheel = Mathf.PosMod(wheel, 4);
+			CalibrateController.SetChoosenWheel((CalibrateAxisWheel)Mathf.PosMod((int)wheel, 4));
 			actionTriggered = true;
 		}
 
@@ -139,7 +145,7 @@ public class CalibrateAxisController : IRoverCalibrateController
 				return;
 
 		// Getting accual vescId
-		byte vescId = LocalSettingsMemory.Singleton.CalibrateAxis.ChoosenAxis;
+		byte vescId = CalibrateController.Singleton.CalibrateAxisValues.ChoosenAxis;
 		if (vescId == byte.MaxValue) return; // vescId cannt be MaxValue
 
 		// Getting some values
@@ -179,13 +185,19 @@ public class CalibrateAxisController : IRoverCalibrateController
 		// Making sure the are not pressed together
 		if (left == right) return;
 
+		EventLogger.LogMessage(nameof(CalibrateAxisController), EventLogger.LogLevel.Info, $"1:  Wheel:{CalibrateController.Singleton.CalibrateAxisValues.ChoosenWheel}, Axis:{CalibrateController.Singleton.CalibrateAxisValues.ChoosenAxis}");
+
 		// Gettings vesc id
-		byte vescId = LocalSettingsMemory.Singleton.CalibrateAxis.ChoosenAxis;
+		byte vescId = CalibrateController.Singleton.CalibrateAxisValues.ChoosenAxis;
 		if (vescId == byte.MaxValue) return;
 
+		EventLogger.LogMessage(nameof(CalibrateAxisController), EventLogger.LogLevel.Info, $"2: {Mathf.Abs(CalibrateController.Singleton.CalibrateAxisValues.OffsetValue)}");
+
 		// Getting offset from panel
-		float offset = Mathf.Abs(LocalSettingsMemory.Singleton.CalibrateAxis.OffsetValue);
+		float offset = Mathf.Abs(CalibrateController.Singleton.CalibrateAxisValues.OffsetValue);
 		if (offset == 0f) return;
+
+		EventLogger.LogMessage(nameof(CalibrateAxisController), EventLogger.LogLevel.Info, $"3: ");
 
 		if (left) CalibrateController.SendOffsetAsync(vescId, (-1) * offset);
 		if (right) CalibrateController.SendOffsetAsync(vescId, offset);
@@ -203,7 +215,7 @@ public class CalibrateAxisController : IRoverCalibrateController
 		if (!i) return; // Block if clicked together
 
 		// Gettings vesc id
-		byte vescId = LocalSettingsMemory.Singleton.CalibrateAxis.ChoosenAxis;
+		byte vescId = CalibrateController.Singleton.CalibrateAxisValues.ChoosenAxis;
 		if (vescId == byte.MaxValue) return;
 
 		if (left) CalibrateController.SendStopAsync(vescId);

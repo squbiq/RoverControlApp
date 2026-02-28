@@ -1,4 +1,5 @@
-﻿using MQTTnet.Protocol;
+﻿using Godot;
+using MQTTnet.Protocol;
 using RoverControlApp.Core;
 using System;
 using System.Text.Json;
@@ -7,16 +8,23 @@ using System.Threading.Tasks;
 
 namespace RoverControlApp.MVVM.Model;
 
-public static class CalibrateController
+public partial class CalibrateController : Node
 {
 	public static event Action<float>? VelocityChanged;
 	public static event Action<float>? OffsetSend;
+	public static event Action? CalibrateAxisValuesUpdated;
+
+	public MqttClasses.CalibrateAxisValues CalibrateAxisValues { get; private set; } = null!;
+
+	#pragma warning disable CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable.
+	public static CalibrateController Singleton { get; private set; }
+	#pragma warning restore CS8618
+
+
+	#region Velocity.Manager
 
 	private static VelocityManager? _velocityManager = null;
 	private static readonly object _velocityManagerLock = new();
-
-	private static int _lastActionInt = (int)LastActions.None;
-	public const int _intervalMs = 100;
 
 	private class VelocityManager
 	{
@@ -28,7 +36,9 @@ public static class CalibrateController
 		public volatile float _velocity;
 		public float Velocity
 		{
-			get => _velocity; set {
+			get => _velocity;
+			set
+			{
 				_velocity = value;
 				VelocityChanged?.Invoke(value);
 			}
@@ -43,6 +53,12 @@ public static class CalibrateController
 		}
 	}
 
+	#endregion Velocity.Manager
+
+
+	#region Last.Action
+
+	private static int _lastActionInt = (int)LastActions.None;
 
 	public enum LastActions
 	{
@@ -78,8 +94,29 @@ public static class CalibrateController
 			$"LastAction changed: {prevAction} -> {(LastActions)action}");
 	}
 
+	#endregion Last.Action
 
-	public static async Task<bool> SendCalibrateAxisAsync(
+
+	#region Godot.Override
+
+	public override void _Ready() {
+		base._Ready();
+		CalibrateAxisValues = new();
+		Singleton ??= this;
+	}
+
+	protected override void Dispose(bool disposing)
+	{
+		Singleton = null!;
+		base.Dispose(disposing);
+	}
+
+	#endregion Godot.Override
+
+
+	#region SendCalibaterAxis
+
+	private static async Task<bool> SendCalibrateAxisAsync(
 		MqttClasses.CalibrateAxisAction actionType,
 		byte vescId,
 		float value,
@@ -146,8 +183,11 @@ public static class CalibrateController
 		}
 	}
 
+	#endregion SendCalibaterAxis
 
-	public static async Task<bool> SendCalibrateActionAsync(
+
+	#region Actions
+	private static async Task<bool> SendCalibrateActionAsync(
 		MqttClasses.CalibrateAxisAction actionType,
 		byte vescId,
 		float value = 0f,
@@ -158,7 +198,6 @@ public static class CalibrateController
 		StopVelocitySafe(); // Before making to stop velocity manager before sending an action
 		return await SendCalibrateAxisAsync(actionType, vescId, value, timestamp, qos, retain).ConfigureAwait(false);
 	}
-
 
 	public static Task<bool> SendStopAsync(byte vescId) =>
 		SendCalibrateActionAsync(MqttClasses.CalibrateAxisAction.Stop, vescId);
@@ -176,11 +215,16 @@ public static class CalibrateController
 		OffsetSend?.Invoke(value);
 		return SendCalibrateActionAsync(MqttClasses.CalibrateAxisAction.Offset, vescId, value);
 	}
-		
 
-	public static bool StartVelocity(byte vescId, float initialVelocity, int intervalMs = _intervalMs)
+	#endregion Actions
+
+
+	#region Velocity
+
+	public static bool StartVelocity(byte vescId, float initialVelocity)
 	{
 		if (PressedKeys.Singleton.ControlMode != MqttClasses.ControlMode.EStop) return false;
+		int intervalMs = LocalSettings.Singleton.Calibration.MsgLimiter;
 
 		lock (_velocityManagerLock)
 		{
@@ -343,5 +387,107 @@ public static class CalibrateController
 			return false;
 		}
 	}
+
+	#endregion Velocity
+
+
+	#region Values.Methods
+
+	public static void SetCalibrateEnabled(bool enabled)
+	{
+		if (Singleton is null) return;
+		Singleton.CalibrateAxisValues.CalibrateEnabled = enabled;
+		CalibrateAxisValuesUpdated?.Invoke();
+	}
+
+	public static void SetOffsetValue(float offset)
+	{
+		if (Singleton is null) return;
+		Singleton.CalibrateAxisValues.OffsetValue = offset;
+		CalibrateAxisValuesUpdated?.Invoke();
+	}
+
+	public static void SetVelocityValue(float velocity)
+	{
+		if (Singleton is null) return;
+		Singleton.CalibrateAxisValues.VelocityValue = velocity;
+		CalibrateAxisValuesUpdated?.Invoke();
+	}
+
+	public static void SetChoosenAxis(byte axis)
+	{
+		if (Singleton is null) return;
+		Singleton.CalibrateAxisValues.ChoosenAxis = axis;
+		CalibrateAxisValuesUpdated?.Invoke();
+	}
+
+	public static void SetChoosenWheel(MqttClasses.CalibrateAxisWheel wheel)
+	{
+		if (Singleton is null) return;
+		Singleton.CalibrateAxisValues.ChoosenWheel = wheel;
+		if (TryGetSelectedVescId(out byte vescId))
+			SetChoosenAxis(vescId);
+
+		CalibrateAxisValuesUpdated?.Invoke();
+	}
+
+	#endregion Values.Methods
+
+
+	#region Wheel.Changing.Methods
+
+	public static byte GetVescId(MqttClasses.CalibrateAxisWheel wheelID)
+	{
+		try
+		{
+			var raw = wheelID switch
+			{
+				MqttClasses.CalibrateAxisWheel.FrontLeft => LocalSettings.Singleton.WheelData.FrontLeftTurn,
+				MqttClasses.CalibrateAxisWheel.FrontRight => LocalSettings.Singleton.WheelData.FrontRightTurn,
+				MqttClasses.CalibrateAxisWheel.RearLeft => LocalSettings.Singleton.WheelData.BackLeftTurn,
+				MqttClasses.CalibrateAxisWheel.RearRight => LocalSettings.Singleton.WheelData.BackRightTurn,
+				_ => string.Empty
+			};
+
+			if (string.IsNullOrWhiteSpace(raw))
+				return byte.MaxValue;
+
+			return (byte)Convert.ToInt32(raw.Replace("0x", ""), 16);
+		}
+		catch (Exception e)
+		{
+			EventLogger.LogMessage(nameof(CalibrateController), EventLogger.LogLevel.Warning, $"GetVescId parse error for wheel {wheelID}: {e.Message}");
+			return byte.MaxValue;
+		}
+	}
+
+	public static bool TryGetSelectedVescId(out byte vescId)
+	{
+		vescId = byte.MaxValue;
+
+		if (Singleton is null)
+			return false;
+
+		var wheel = Singleton.CalibrateAxisValues.ChoosenWheel;
+		if (wheel == MqttClasses.CalibrateAxisWheel.None)
+		{
+			EventLogger.LogMessage(nameof(CalibrateController), EventLogger.LogLevel.Verbose, "No wheel selected.");
+			return false;
+		}
+
+		vescId = GetVescId(wheel);
+		if (vescId == byte.MaxValue)
+		{
+			EventLogger.LogMessage(nameof(CalibrateController), EventLogger.LogLevel.Warning, "Invalid VESC id parsed from settings.");
+			return false;
+		}
+
+		if(Singleton.CalibrateAxisValues.ChoosenAxis != vescId)
+			SetChoosenAxis(vescId);
+
+		return true;
+	}
+
+	#endregion Wheel.Changing.Methods
 
 }

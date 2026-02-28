@@ -9,14 +9,6 @@ public partial class CalibrateControl : Panel
 {
 	private enum HookAction { Enter, Exit }
 
-	private enum Wheel {
-		None = -1,
-		FrontLeft,
-		FrontRight,
-		RearLeft,
-		RearRight
-	}
-
 	[ExportGroup("Axis")]
 	[Export] private Sprite2D[] AxisModels = new Sprite2D[4];
 	[Export] private Button[] AxisButtons = new Button[4];
@@ -39,105 +31,36 @@ public partial class CalibrateControl : Panel
 
 	private Action?[] _AxisBtnHandlers = Array.Empty<Action?>();
 
-	private bool _calibrateEnabled = true;
-	private Wheel _wheelValue = Wheel.None;
-
-	private byte _vescId = byte.MaxValue;
-	private float _offsetValue = 1.0f;
-	private float _velocityValue = 1.0f;
-
-	// Managin private Values and LocalSettingsMemory
-	private float OffsetValue
-	{
-		get => _offsetValue;
-		set
-		{
-			_offsetValue = value;
-			LocalSettingsMemory.Singleton.CalibrateAxis.OffsetValue = value;
-		}
+	private float OffsetValue {
+		get => CalibrateController.Singleton.CalibrateAxisValues.OffsetValue;
+		set => CalibrateController.SetOffsetValue(value);
 	}
 
-	private float VelocityValue
-	{
-		get => _velocityValue;
-		set
-		{
-			_velocityValue = value;
-			LocalSettingsMemory.Singleton.CalibrateAxis.VelocityValue = value;
-		}
+	private float VelocityValue {
+		get => CalibrateController.Singleton.CalibrateAxisValues.VelocityValue;
+		set => CalibrateController.SetVelocityValue(value);
 	}
 
 	private bool CalibrateEnabled
 	{
-		get => _calibrateEnabled;
-		set
-		{
-			_calibrateEnabled = value;
-			LocalSettingsMemory.Singleton.CalibrateAxis.PanelVisibilty = value;
-		}
+		get => CalibrateController.Singleton.CalibrateAxisValues.CalibrateEnabled;
+		set => CalibrateController.SetCalibrateEnabled(value);
 	}
 
-	private int WheelValue
+	private MqttClasses.CalibrateAxisWheel ChoosenWheel
 	{
-		get => (int)_wheelValue;
-		set
-		{
-			_wheelValue = (Wheel)value;
-			if (TryGetSelectedVescId(out var vescId))
-			{
-				_vescId = vescId;
-				LocalSettingsMemory.Singleton.CalibrateAxis.ChoosenAxis = vescId;
-			}
-		}
+		get => CalibrateController.Singleton.CalibrateAxisValues.ChoosenWheel;
+		set => CalibrateController.SetChoosenWheel(value);
 	}
 
-
-	// Getting the VescID from WheelData in LocalSettings with conversion from string to byte
-	private byte GetVescId(Wheel wheelID)
+	private byte ChoosenAxis
 	{
-		try
-		{
-			var raw = wheelID switch
-			{
-				Wheel.FrontLeft => LocalSettings.Singleton.WheelData.FrontLeftTurn,
-				Wheel.FrontRight => LocalSettings.Singleton.WheelData.FrontRightTurn,
-				Wheel.RearLeft => LocalSettings.Singleton.WheelData.BackLeftTurn,
-				Wheel.RearRight => LocalSettings.Singleton.WheelData.BackRightTurn,
-				_ => string.Empty
-			};
-
-			if (string.IsNullOrWhiteSpace(raw))
-				return byte.MaxValue;
-
-			return (byte)Convert.ToInt32(raw.Replace("0x", ""), 16);
-		}
-		catch (Exception e)
-		{
-			EventLogger.LogMessage(nameof(CalibrateControl), EventLogger.LogLevel.Warning, $"GetVescId parse error for wheel {wheelID}: {e.Message}");
-			return byte.MaxValue;
-		}
+		get => CalibrateController.Singleton.CalibrateAxisValues.ChoosenAxis;
+		set => CalibrateController.SetChoosenAxis(value);
 	}
 
-	// Validation for gettings the vescId
-	private bool TryGetSelectedVescId(out byte vescId)
-	{
-		vescId = byte.MaxValue;
 
-		if (_wheelValue == Wheel.None) {
-			EventLogger.LogMessage("CalibrateControl", EventLogger.LogLevel.Verbose, "No wheel selected.");
-			return false;
-		}
-
-		vescId = GetVescId(_wheelValue);
-		if (vescId == byte.MaxValue)
-		{
-			EventLogger.LogMessage("CalibrateControl", EventLogger.LogLevel.Warning, "Invalid VESC id parsed from settings.");
-			return false;
-		}
-
-		return true;
-	}
-
+	#region Godot.Override
 
 	public override void _EnterTree()
 	{
@@ -160,6 +83,7 @@ public partial class CalibrateControl : Panel
 
 		CalibrateController.VelocityChanged += ManageVelocityChange;
 		CalibrateController.OffsetSend += ManageOffsetSend;
+		CalibrateController.CalibrateAxisValuesUpdated += CalibrateAxisValuesChanged;
 
 		Connect("visibility_changed", new Callable(this, nameof(OnVisibilityChanged)));
 	}
@@ -177,10 +101,6 @@ public partial class CalibrateControl : Panel
 				LocalSettings.Singleton.Calibration.CalibrationMotor.MaxSpeed
 		);
 		CalibrateEnabled = PanelCover.Visible;
-
-		LocalSettingsMemory.Singleton.Connect(LocalSettingsMemory.SignalName.PropagatedPropertyChanged,
-			Callable.From<StringName, StringName, Variant, Variant>(OnSettingsMemoryPropertyChanged)
-		);
 
 		LocalSettings.Singleton.Connect(LocalSettings.SignalName.PropagatedSubcategoryChanged,
 			Callable.From<StringName, StringName, Variant, Variant>(OnSettingsPropertyChanged));
@@ -207,28 +127,25 @@ public partial class CalibrateControl : Panel
 
 		CalibrateController.VelocityChanged -= ManageVelocityChange;
 		CalibrateController.OffsetSend -= ManageOffsetSend;
+		CalibrateController.CalibrateAxisValuesUpdated -= CalibrateAxisValuesChanged;
 
 		Disconnect("visibility_changed", new Callable(this, nameof(OnVisibilityChanged)));
-		LocalSettingsMemory.Singleton.Disconnect(LocalSettingsMemory.SignalName.PropagatedPropertyChanged,
-			Callable.From<StringName, StringName, Variant, Variant>(OnSettingsMemoryPropertyChanged));
-
+		
 		LocalSettings.Singleton.Disconnect(LocalSettings.SignalName.PropagatedSubcategoryChanged,
 			Callable.From<StringName, StringName, Variant, Variant>(OnSettingsPropertyChanged));
 	}
 
+	#endregion Godot.Override
 
-	void OnSettingsMemoryPropertyChanged(StringName category, StringName name, Variant oldValue, Variant newValue)
-	{
-		if (category != nameof(LocalSettingsMemory.Singleton.CalibrateAxis)) return;
 
-		if (name == nameof(LocalSettingsMemory.CalibrateAxis.ChoosenWheel)) {
-			ChooseAxis(LocalSettingsMemory.Singleton.CalibrateAxis.ChoosenWheel);
-		}
+	#region Methods.On
+
+	void CalibrateAxisValuesChanged() {
+		UpdateChooseAxis();
 	}
 
 	void OnSettingsPropertyChanged(StringName category, StringName name, Variant oldValue, Variant newValue)
 	{
-		EventLogger.LogMessage(nameof(Knob), EventLogger.LogLevel.Info, $"category: {category}, name: {name}");
 		if (category != nameof(LocalSettings.Singleton.Calibration)) return;
 
 		if (name == nameof(LocalSettings.Singleton.Calibration.CalibrationMotor)) {
@@ -245,15 +162,11 @@ public partial class CalibrateControl : Panel
 			CancelClicked();
 	}
 
-
 	public Task ControlModeChangedControl(MqttClasses.ControlMode newMode)
 	{
 		CalibrateEnabled = (newMode == MqttClasses.ControlMode.EStop ? true : false);
 		PanelCover.Visible = CalibrateEnabled ? false : true;
 
-		EventLogger.LogMessage("CalibrateControl", EventLogger.LogLevel.Info, $"ControlMode Changed to {newMode}");
-
-		// Making sure to Cancel if no action provided before changing the ControlMode
 		if (newMode != MqttClasses.ControlMode.EStop) 	{
 			CalibrateController.StopVelocitySafe();
 			CancelClicked();
@@ -262,25 +175,32 @@ public partial class CalibrateControl : Panel
 		return Task.CompletedTask;
 	}
 
+	#endregion Methods.On
+
+
+	#region Wheel.Choosing
+
 	void ChooseAxis(long index)
 	{
-
-		// Making sure to Cancel if no action provided
 		if (
 			CalibrateController.LastAction != CalibrateController.LastActions.Action &&
 			CalibrateController.LastAction != CalibrateController.LastActions.None
 		)
 		{
-			// Stop velocities to avoid conflicts, then send Cancel
 			CalibrateController.StopVelocitySafe();
-			CalibrateController.SendCancelAsync(_vescId);
-		}
 
-		for (int i = 0; i < AxisModels.Length; i++)
-		{
-			if (i == index)
+			if (CalibrateController.TryGetSelectedVescId(out var vescId))
+				CalibrateController.SendCancelAsync(vescId);
+		}
+		ChoosenWheel = (MqttClasses.CalibrateAxisWheel)index;
+		UpdateChooseAxis();
+	}
+
+	void UpdateChooseAxis()
+	{
+		for (int i = 0; i < AxisModels.Length; i++) {
+			if (i == (int)ChoosenWheel)
 			{
-				WheelValue = i;
 				AxisOptions.Select(i);
 				AxisModels[i].Modulate = Color.FromHtml("#00ff00");
 			}
@@ -291,6 +211,10 @@ public partial class CalibrateControl : Panel
 		}
 	}
 
+	#endregion Wheel.Choosing
+
+
+	#region Knob.Changes
 
 	void ManageVelocityChange(float newValue) {
 		if(!VelocityKnob.IsSimRunning) {
@@ -309,10 +233,14 @@ public partial class CalibrateControl : Panel
 		OffsetKnob.StartSimSingle(newValue);
 	}
 
+	#endregion Knob.Changes
+
+
+	#region Buttons.Actions
 
 	void VelocityDown()
 	{
-		if (!TryGetSelectedVescId(out var vescId)) return;
+		if (!CalibrateController.TryGetSelectedVescId(out var vescId)) return;
 		CalibrateController.StartVelocity(vescId, VelocityValue);
 	}
 
@@ -323,36 +251,37 @@ public partial class CalibrateControl : Panel
 
 	void OffsetClicked()
 	{
-		if (!TryGetSelectedVescId(out var vescId)) return;
+		if (!CalibrateController.TryGetSelectedVescId(out var vescId)) return;
 		CalibrateController.SendOffsetAsync(vescId, OffsetValue);
 	}
 
 	void ConfirmClicked()
 	{
-		if (!TryGetSelectedVescId(out var vescId)) return;
+		if (!CalibrateController.TryGetSelectedVescId(out var vescId)) return;
 		CalibrateController.SendConfirmAsync(vescId);
 	}
 
 	void CancelClicked()
 	{
-		if (!TryGetSelectedVescId(out var vescId)) return;
+		if (!CalibrateController.TryGetSelectedVescId(out var vescId)) return;
 		CalibrateController.SendCancelAsync(vescId);
 	}
 
 	void StopClicked()
 	{
-		if (!TryGetSelectedVescId(out var vescId)) return;
+		if (!CalibrateController.TryGetSelectedVescId(out var vescId)) return;
 		CalibrateController.SendStopAsync(vescId);
 	}
 
 	void ReturnToOriginClicked()
 	{
-		if (!TryGetSelectedVescId(out var vescId)) return;
+		if (!CalibrateController.TryGetSelectedVescId(out var vescId)) return;
 		CalibrateController.SendReturnToOriginAsync(vescId);
 	}
 
+	#endregion Buttons.Actions
 
-	// Hook for Axis choose Buttons
+
 	void HookButtons(Button[] buttons, ref Action?[] actions, HookAction actionType, Action<long> callback)
 	{
 

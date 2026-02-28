@@ -101,6 +101,15 @@ namespace RoverControlApp.Core
 			SetVelocity = 5
 		}
 
+		public enum CalibrateAxisWheel
+		{
+			None = -1,
+			FrontLeft = 0,
+			FrontRight = 1,
+			RearLeft = 2,
+			RearRight = 3,
+		}
+
 		public class RoverStatus
 		{
 			public CommunicationState CommunicationState { get; set; } = CommunicationState.Closed;
@@ -310,5 +319,14 @@ namespace RoverControlApp.Core
 			public long Timestamp { get; set; } = DateTimeOffset.Now.ToUnixTimeMilliseconds();
 		}
 
-	}
+		public class CalibrateAxisValues()
+		{
+			public bool CalibrateEnabled { get; set; } = false;
+			public float OffsetValue { get; set; } = 1.0f;
+			public float VelocityValue { get; set; } = 1.0f;
+			public byte ChoosenAxis { get; set; } = byte.MaxValue;
+			public CalibrateAxisWheel ChoosenWheel { get; set; } = CalibrateAxisWheel.None;
+		}
+
+}
 }
