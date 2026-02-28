@@ -1,6 +1,5 @@
 ﻿using Godot;
 using RoverControlApp.MVVM.Model;
-using RoverControlApp.MVVM.ViewModel;
 using System;
 using System.Collections.Generic;
 using static RoverControlApp.Core.MqttClasses;
@@ -113,7 +112,9 @@ public class CalibrateAxisController : IRoverCalibrateController
 
 		if (canTriggerLeft || canTriggerRight)
 		{
-			CalibrateController.SetChoosenWheel((CalibrateAxisWheel)Mathf.PosMod((int)wheel, 4));
+			CalibrateController.SetChoosenWheel(
+				(CalibrateAxisWheel)Mathf.PosMod((int)wheel, 4)
+			);
 			actionTriggered = true;
 		}
 
@@ -144,13 +145,11 @@ public class CalibrateAxisController : IRoverCalibrateController
 			)
 				return;
 
-		// Getting accual vescId
-		byte vescId = CalibrateController.Singleton.CalibrateAxisValues.ChoosenAxis;
-		if (vescId == byte.MaxValue) return; // vescId cannt be MaxValue
-
 		// Getting some values
 		float multiple = Math.Abs(rotateBumpers);
 		float calculatedVelocity = velocityMin + ((velocityMax - velocityMin) * multiple);
+
+		EventLogger.LogMessage(nameof(CalibrateAxisController), EventLogger.LogLevel.Info, $"rotateBumpers: {rotateBumpers}, calculatedVelocity: {calculatedVelocity}");
 
 		// Multiplaing the current amount by bumper pressing state, and te rotation
 		float newVelocity = calculatedVelocity * (rotateBumpers > 0f ? 1f : -1f);
@@ -165,7 +164,7 @@ public class CalibrateAxisController : IRoverCalibrateController
 			}
 			else
 			{
-				CalibrateController.StartVelocity(vescId, newVelocity);
+				CalibrateController.StartVelocity(newVelocity);
 			}
 		}
 		else
@@ -185,22 +184,12 @@ public class CalibrateAxisController : IRoverCalibrateController
 		// Making sure the are not pressed together
 		if (left == right) return;
 
-		EventLogger.LogMessage(nameof(CalibrateAxisController), EventLogger.LogLevel.Info, $"1:  Wheel:{CalibrateController.Singleton.CalibrateAxisValues.ChoosenWheel}, Axis:{CalibrateController.Singleton.CalibrateAxisValues.ChoosenAxis}");
-
-		// Gettings vesc id
-		byte vescId = CalibrateController.Singleton.CalibrateAxisValues.ChoosenAxis;
-		if (vescId == byte.MaxValue) return;
-
-		EventLogger.LogMessage(nameof(CalibrateAxisController), EventLogger.LogLevel.Info, $"2: {Mathf.Abs(CalibrateController.Singleton.CalibrateAxisValues.OffsetValue)}");
-
 		// Getting offset from panel
 		float offset = Mathf.Abs(CalibrateController.Singleton.CalibrateAxisValues.OffsetValue);
 		if (offset == 0f) return;
 
-		EventLogger.LogMessage(nameof(CalibrateAxisController), EventLogger.LogLevel.Info, $"3: ");
-
-		if (left) CalibrateController.SendOffsetAsync(vescId, (-1) * offset);
-		if (right) CalibrateController.SendOffsetAsync(vescId, offset);
+		if (left) CalibrateController.SendOffsetAsync((-1) * offset);
+		if (right) CalibrateController.SendOffsetAsync(offset);
 	}
 
 	private void ActionHandler(in InputEvent inputEvent, DualSeatEvent.InputDevice targetInputDevice)
@@ -214,14 +203,10 @@ public class CalibrateAxisController : IRoverCalibrateController
 		bool i = left ^ right ^ bottom ^ top;
 		if (!i) return; // Block if clicked together
 
-		// Gettings vesc id
-		byte vescId = CalibrateController.Singleton.CalibrateAxisValues.ChoosenAxis;
-		if (vescId == byte.MaxValue) return;
-
-		if (left) CalibrateController.SendStopAsync(vescId);
-		if (right) CalibrateController.SendCancelAsync(vescId); 
-		if (top) CalibrateController.SendReturnToOriginAsync(vescId);
-		if (bottom) CalibrateController.SendConfirmAsync(vescId);
+		if (left) CalibrateController.SendStopAsync();
+		if (right) CalibrateController.SendCancelAsync(); 
+		if (top) CalibrateController.SendReturnToOriginAsync();
+		if (bottom) CalibrateController.SendConfirmAsync();
 	}
 
 

@@ -189,31 +189,32 @@ public partial class CalibrateController : Node
 	#region Actions
 	private static async Task<bool> SendCalibrateActionAsync(
 		MqttClasses.CalibrateAxisAction actionType,
-		byte vescId,
 		float value = 0f,
 		long? timestamp = null,
 		MqttQualityOfServiceLevel qos = MqttQualityOfServiceLevel.AtMostOnce,
 		bool retain = false)
 	{
+		if (!TryGetSelectedVescId(out var vescId)) return false;
 		StopVelocitySafe(); // Before making to stop velocity manager before sending an action
 		return await SendCalibrateAxisAsync(actionType, vescId, value, timestamp, qos, retain).ConfigureAwait(false);
 	}
 
-	public static Task<bool> SendStopAsync(byte vescId) =>
-		SendCalibrateActionAsync(MqttClasses.CalibrateAxisAction.Stop, vescId);
+	public static Task<bool> SendStopAsync() =>
+		SendCalibrateActionAsync(MqttClasses.CalibrateAxisAction.Stop);
 
-	public static Task<bool> SendReturnToOriginAsync(byte vescId) =>
-		SendCalibrateActionAsync(MqttClasses.CalibrateAxisAction.ReturnToOrigin, vescId);
+	public static Task<bool> SendReturnToOriginAsync() =>
+		SendCalibrateActionAsync(MqttClasses.CalibrateAxisAction.ReturnToOrigin);
 
-	public static Task<bool> SendConfirmAsync(byte vescId) =>
-		SendCalibrateActionAsync(MqttClasses.CalibrateAxisAction.Confirm, vescId);
+	public static Task<bool> SendConfirmAsync() =>
+		SendCalibrateActionAsync(MqttClasses.CalibrateAxisAction.Confirm);
 
-	public static Task<bool> SendCancelAsync(byte vescId) =>
-		SendCalibrateActionAsync(MqttClasses.CalibrateAxisAction.Cancel, vescId);
+	public static Task<bool> SendCancelAsync() =>
+		SendCalibrateActionAsync(MqttClasses.CalibrateAxisAction.Cancel);
 
-	public static Task<bool> SendOffsetAsync(byte vescId, float value) {
-		OffsetSend?.Invoke(value);
-		return SendCalibrateActionAsync(MqttClasses.CalibrateAxisAction.Offset, vescId, value);
+	public static Task<bool> SendOffsetAsync(float? offset = null) {
+		float offsetValue = offset ?? Singleton.CalibrateAxisValues.OffsetValue;
+		OffsetSend?.Invoke(offsetValue);
+		return SendCalibrateActionAsync(MqttClasses.CalibrateAxisAction.Offset, offsetValue);
 	}
 
 	#endregion Actions
@@ -221,9 +222,12 @@ public partial class CalibrateController : Node
 
 	#region Velocity
 
-	public static bool StartVelocity(byte vescId, float initialVelocity)
+	public static bool StartVelocity(float? velocity = null)
 	{
 		if (PressedKeys.Singleton.ControlMode != MqttClasses.ControlMode.EStop) return false;
+		if (!TryGetSelectedVescId(out var vescId)) return false;
+
+		float initialVelocity = velocity ?? Singleton.CalibrateAxisValues.VelocityValue;
 		int intervalMs = LocalSettings.Singleton.Calibration.MsgLimiter;
 
 		lock (_velocityManagerLock)
@@ -429,6 +433,14 @@ public partial class CalibrateController : Node
 			SetChoosenAxis(vescId);
 
 		CalibrateAxisValuesUpdated?.Invoke();
+	}
+
+	public static void SetCalibateAxisValues(MqttClasses.CalibrateAxisValues calibrateAxisValues)
+	{
+		if (Singleton is null) return;
+		Singleton.CalibrateAxisValues = calibrateAxisValues;
+		CalibrateAxisValuesUpdated?.Invoke();
+
 	}
 
 	#endregion Values.Methods
