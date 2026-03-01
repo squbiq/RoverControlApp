@@ -134,22 +134,13 @@ public partial class CalibrateControl : Panel
 
 	void OnVisibilityChanged() {
 		CalibrateController.SetCalibrateEnabled(Visible);
-		if (!Visible)
-			CancelClicked();
 	}
 
 	public Task ControlModeChangedControl(MqttClasses.ControlMode newMode)
 	{
 		bool newVisibility = (newMode == MqttClasses.ControlMode.EStop ? true : false);
-		EventLogger.LogMessage(nameof(CalibrateController), EventLogger.LogLevel.Info, $"newMode: {newMode}");
 		CalibrateController.SetCalibrateEnabled(newVisibility);
 		PanelCover.Visible = !newVisibility;
-
-		if (!newVisibility) 	{
-			CalibrateController.StopVelocitySafe();
-			CancelClicked();
-		}
-
 		return Task.CompletedTask;
 	}
 
@@ -168,14 +159,7 @@ public partial class CalibrateControl : Panel
 
 	void UpdateChooseAxis()
 	{
-		if (
-			CalibrateController.LastAction != CalibrateController.LastActions.Action &&
-			CalibrateController.LastAction != CalibrateController.LastActions.None
-		)
-		{
-			CalibrateController.StopVelocitySafe();
-			CalibrateController.SendCancelAsync();
-		}
+		
 		for (int i = 0; i < AxisModels.Length; i++) {
 			if (i == (int)CalibrateController.Singleton.CalibrateAxisValues.ChoosenWheel)
 			{

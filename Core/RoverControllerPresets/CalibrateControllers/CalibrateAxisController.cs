@@ -149,8 +149,6 @@ public class CalibrateAxisController : IRoverCalibrateController
 		float multiple = Math.Abs(rotateBumpers);
 		float calculatedVelocity = velocityMin + ((velocityMax - velocityMin) * multiple);
 
-		EventLogger.LogMessage(nameof(CalibrateAxisController), EventLogger.LogLevel.Info, $"rotateBumpers: {rotateBumpers}, calculatedVelocity: {calculatedVelocity}");
-
 		// Multiplaing the current amount by bumper pressing state, and te rotation
 		float newVelocity = calculatedVelocity * (rotateBumpers > 0f ? 1f : -1f);
 		lastBumperValue = rotateBumpers;

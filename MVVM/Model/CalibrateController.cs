@@ -127,18 +127,19 @@ public partial class CalibrateController : Node
 	{
 		try
 		{
+			if (LastAction == LastActions.None) return false;
+
 			var mapped = MapActionToLastAction(actionType);
 
 			if (PressedKeys.Singleton.ControlMode != MqttClasses.ControlMode.EStop && LastAction != LastActions.VelocityStopped) {
-				EventLogger.LogMessage(nameof(CalibrateController), EventLogger.LogLevel.Warning,
+				EventLogger.LogMessage(nameof(CalibrateController), EventLogger.LogLevel.Verbose,
 					"ControlMode is not in EStop mode. Not sending CalibrateAxis.");
 				return false;
 			}
 
 			// Prevent Sending Action after Action
-			if ((LastAction == LastActions.Action || LastAction == LastActions.None) && mapped == LastActions.Action){
-				EventLogger.LogMessage(nameof(CalibrateController), EventLogger.LogLevel.Warning,
-					"Action was sended. Waiting for changes.");
+			if (LastAction == LastActions.Action && mapped == LastActions.Action) {
+				EventLogger.LogMessage(nameof(CalibrateController), EventLogger.LogLevel.Verbose, "Action was sended");
 				return false;
 			}
 
@@ -187,6 +188,7 @@ public partial class CalibrateController : Node
 
 
 	#region Actions
+
 	private static async Task<bool> SendCalibrateActionAsync(
 		MqttClasses.CalibrateAxisAction actionType,
 		float value = 0f,
@@ -401,6 +403,7 @@ public partial class CalibrateController : Node
 	{
 		if (Singleton is null) return;
 		Singleton.CalibrateAxisValues.CalibrateEnabled = enabled;
+		if (!enabled) SendCancelAsync();
 		CalibrateAxisValuesUpdated?.Invoke();
 	}
 
@@ -427,6 +430,15 @@ public partial class CalibrateController : Node
 
 	public static void SetChoosenWheel(MqttClasses.CalibrateAxisWheel wheel)
 	{
+		if (
+			LastAction != LastActions.Action &&
+			LastAction != LastActions.None
+		)
+		{
+			StopVelocitySafe();
+			SendCancelAsync();
+		}
+
 		if (Singleton is null) return;
 		Singleton.CalibrateAxisValues.ChoosenWheel = wheel;
 		if (TryGetSelectedVescId(out byte vescId))
