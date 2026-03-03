@@ -13,12 +13,26 @@ public partial class CalibrateController : Node
 	public static event Action<float>? VelocityChanged;
 	public static event Action<float>? OffsetSend;
 	public static event Action? CalibrateAxisValuesUpdated;
+	public static event Action<bool>? OnPadSteeringChange;
 
 	public MqttClasses.CalibrateAxisValues CalibrateAxisValues { get; private set; } = null!;
 
 	#pragma warning disable CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable.
 	public static CalibrateController Singleton { get; private set; }
 	#pragma warning restore CS8618
+
+	#region PadSteering.State
+
+	public static bool isPadSteering = false;
+
+	public static void ChangePadSterring(bool newState) {
+		if(newState != isPadSteering) {
+			isPadSteering = newState;
+			OnPadSteeringChange?.Invoke(newState);
+		}
+	}
+
+	#endregion PadSteering.State
 
 
 	#region Velocity.Manager
@@ -403,7 +417,10 @@ public partial class CalibrateController : Node
 	{
 		if (Singleton is null) return;
 		Singleton.CalibrateAxisValues.CalibrateEnabled = enabled;
-		if (!enabled) SendCancelAsync();
+		if (!enabled) {
+			ChangePadSterring(false);
+			SendCancelAsync();
+		}
 		CalibrateAxisValuesUpdated?.Invoke();
 	}
 

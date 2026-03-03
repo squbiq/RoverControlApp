@@ -43,8 +43,11 @@ public class CalibrateAxisController : IRoverCalibrateController
 
 		if (CalibrateController.Singleton.CalibrateAxisValues.CalibrateEnabled != true) {
 			CalibrateController.StopVelocitySafe();
+			CalibrateController.ChangePadSterring(false);
 			return false;
 		}
+
+		CalibrateController.ChangePadSterring(true);
 
 		// Handlers
 		RotateBumper(inputEvent, targetInputDevice);
@@ -65,12 +68,14 @@ public class CalibrateAxisController : IRoverCalibrateController
 				return true;
 			case true: // Toggle with no action
 				CalibrateController.StopVelocitySafe();
+				CalibrateController.ChangePadSterring(false);
 				return false;
 			// Hold
 			case false when Input.IsActionPressed(DualSeatEvent.GetName(RcaInEvName.CalibrateMode, targetInputDevice), exactMatch: true):
 				return true;
 			case false: // default for hold
 				CalibrateController.StopVelocitySafe();
+				CalibrateController.ChangePadSterring(false);
 				return false;
 		}
 	}

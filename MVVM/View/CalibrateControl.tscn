@@ -1,4 +1,4 @@
-[gd_scene load_steps=19 format=3 uid="uid://c0hwgkpf8yne4"]
+[gd_scene load_steps=20 format=3 uid="uid://c0hwgkpf8yne4"]
 
 [ext_resource type="PackedScene" uid="uid://btgw883t4vf4r" path="res://MVVM/View/Knob.tscn" id="1_6alxa"]
 [ext_resource type="Script" path="res://MVVM/ViewModel/CalibrateControl.cs" id="1_mll3j"]
@@ -19,8 +19,16 @@
 [ext_resource type="Texture2D" uid="uid://ybdt7hnis5dl" path="res://Resources/icons/action_up.svg" id="13_u1nci"]
 [ext_resource type="Texture2D" uid="uid://54wth3ocgjai" path="res://Resources/icons/gamepad.svg" id="17_a8ejf"]
 
-[node name="CalibrateControl" type="Panel" node_paths=PackedStringArray("AxisModels", "AxisButtons", "AxisOptions", "OffsetKnob", "VelocityKnob", "OffsetButton", "VelocityButton", "ConfirmButton", "CancelButton", "StopButton", "ReturnToOriginButton", "PanelCover")]
-custom_minimum_size = Vector2(540, 410)
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_f1pqq"]
+bg_color = Color(0.4, 0.4, 0.4, 1)
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
+shadow_color = Color(0, 0, 0, 0)
+
+[node name="CalibrateControl" type="Panel" node_paths=PackedStringArray("AxisModels", "AxisButtons", "AxisOptions", "OffsetKnob", "VelocityKnob", "OffsetButton", "VelocityButton", "ConfirmButton", "CancelButton", "StopButton", "ReturnToOriginButton", "PanelCover", "LedLamp")]
+custom_minimum_size = Vector2(540, 420)
 anchors_preset = 1
 anchor_left = 1.0
 anchor_right = 1.0
@@ -40,6 +48,7 @@ CancelButton = NodePath("MainContainer/ActionsContainer/HFlowContainer/Cancel")
 StopButton = NodePath("MainContainer/ActionsContainer/HFlowContainer/Stop")
 ReturnToOriginButton = NodePath("MainContainer/ActionsContainer/Return To Origin")
 PanelCover = NodePath("PanelContainer")
+LedLamp = NodePath("HelpLabel/LedLamp")
 
 [node name="VelocityIcons" type="HBoxContainer" parent="."]
 custom_minimum_size = Vector2(0, 20)
@@ -318,13 +327,21 @@ anchor_right = 0.5
 anchor_bottom = 1.0
 offset_left = -206.0
 offset_top = -36.0
-offset_right = 206.0
+offset_right = 246.0
 offset_bottom = -4.0
 grow_horizontal = 2
 grow_vertical = 0
-scale = Vector2(0.6, 0.6)
+scale = Vector2(0.9, 0.9)
 pivot_offset = Vector2(206, 32)
 alignment = 1
+
+[node name="LedLamp" type="PanelContainer" parent="HelpLabel"]
+custom_minimum_size = Vector2(16, 16)
+layout_mode = 2
+size_flags_horizontal = 4
+size_flags_vertical = 4
+mouse_filter = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_f1pqq")
 
 [node name="Label" type="Label" parent="HelpLabel"]
 layout_mode = 2

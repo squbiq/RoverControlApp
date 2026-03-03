@@ -26,11 +26,11 @@ public partial class CalibrateControl : Panel
 	[Export] private Button StopButton = new Button();
 	[Export] private Button ReturnToOriginButton = new Button();
 
-	[ExportGroup("Cover")]
+	[ExportGroup("Addons")]
 	[Export] private Panel PanelCover = new Panel();
+	[Export] private PanelContainer LedLamp = new PanelContainer();
 
 	private Action?[] _AxisBtnHandlers = Array.Empty<Action?>();
-
 
 	#region Godot.Override
 
@@ -56,6 +56,7 @@ public partial class CalibrateControl : Panel
 		CalibrateController.VelocityChanged += ManageVelocityChange;
 		CalibrateController.OffsetSend += ManageOffsetSend;
 		CalibrateController.CalibrateAxisValuesUpdated += OnCalibrateAxisValuesChanged;
+		CalibrateController.OnPadSteeringChange += OnPadConnectionChanged;
 
 		Connect("visibility_changed", new Callable(this, nameof(OnVisibilityChanged)));
 	}
@@ -104,6 +105,7 @@ public partial class CalibrateControl : Panel
 		CalibrateController.VelocityChanged -= ManageVelocityChange;
 		CalibrateController.OffsetSend -= ManageOffsetSend;
 		CalibrateController.CalibrateAxisValuesUpdated -= OnCalibrateAxisValuesChanged;
+		CalibrateController.OnPadSteeringChange -= OnPadConnectionChanged;
 
 		Disconnect("visibility_changed", new Callable(this, nameof(OnVisibilityChanged)));
 		
@@ -115,6 +117,18 @@ public partial class CalibrateControl : Panel
 
 
 	#region Methods.On
+
+	public void OnPadConnectionChanged(bool isPadsConnected) {
+		Color connected = new Color(0.3f, 1f, 0.5f, 1f);
+		Color disconnected = new Color(0.4f, 0.4f, 0.4f, 1f);
+		if(LedLamp.HasThemeStylebox("panel")) {
+			LedLamp.GetThemeStylebox("panel")
+				.Set(
+					StyleBoxFlat.PropertyName.BgColor,
+					isPadsConnected ? connected : disconnected
+				);
+		}
+	}
 
 	void OnCalibrateAxisValuesChanged() {
 		UpdateChooseAxis();
@@ -209,7 +223,6 @@ public partial class CalibrateControl : Panel
 	void ReturnToOriginClicked() => CalibrateController.SendReturnToOriginAsync();
 
 	#endregion Buttons.Actions
-
 
 	void HookButtons(Button[] buttons, ref Action?[] actions, HookAction actionType, Action<long> callback)
 	{
