@@ -141,8 +141,6 @@ public partial class CalibrateController : Node
 	{
 		try
 		{
-			if (LastAction == LastActions.None) return false;
-
 			var mapped = MapActionToLastAction(actionType);
 
 			if (PressedKeys.Singleton.ControlMode != MqttClasses.ControlMode.EStop && LastAction != LastActions.VelocityStopped) {
@@ -152,7 +150,7 @@ public partial class CalibrateController : Node
 			}
 
 			// Prevent Sending Action after Action
-			if (LastAction == LastActions.Action && mapped == LastActions.Action) {
+			if ((LastAction == LastActions.Action || LastAction == LastActions.None) && mapped == LastActions.Action) {
 				EventLogger.LogMessage(nameof(CalibrateController), EventLogger.LogLevel.Verbose, "Action was sended");
 				return false;
 			}
@@ -187,6 +185,9 @@ public partial class CalibrateController : Node
 			EventLogger.LogMessage(nameof(CalibrateController),
 				enqueued ? EventLogger.LogLevel.Verbose : EventLogger.LogLevel.Warning,
 				$"CalibrateAxis async enqueue result: {enqueued}");
+
+			if(enqueued == true && actionType == MqttClasses.CalibrateAxisAction.Offset)
+			 	OffsetSend?.Invoke(value);
 
 			return enqueued;
 		}
@@ -229,7 +230,6 @@ public partial class CalibrateController : Node
 
 	public static Task<bool> SendOffsetAsync(float? offset = null) {
 		float offsetValue = offset ?? Singleton.CalibrateAxisValues.OffsetValue;
-		OffsetSend?.Invoke(offsetValue);
 		return SendCalibrateActionAsync(MqttClasses.CalibrateAxisAction.Offset, offsetValue);
 	}
 
