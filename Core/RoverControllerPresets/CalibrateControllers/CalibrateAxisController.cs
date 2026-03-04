@@ -2,11 +2,10 @@
 using RoverControlApp.MVVM.Model;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using static RoverControlApp.Core.MqttClasses;
 
 namespace RoverControlApp.Core.RoverControllerPresets.CalibrateAxisController;
-
-// Zmiana velocity podczas trzymania velocity na padzie
 
 public class CalibrateAxisController : IRoverCalibrateController
 {
@@ -203,8 +202,8 @@ public class CalibrateAxisController : IRoverCalibrateController
 		bool bottom = inputEvent.IsActionPressed(DualSeatEvent.GetName(RcaInEvName.CalibrateActionBottom, targetInputDevice));
 		bool top = inputEvent.IsActionPressed(DualSeatEvent.GetName(RcaInEvName.CalibrateActionTop, targetInputDevice));
 
-		bool i = left ^ right ^ bottom ^ top;
-		if (!i) return; // Block if clicked together
+		bool[] actions = { left, right, bottom, top };
+		if (actions.Count(x => x) != 1) return; // Block if clicked together
 
 		if (left) CalibrateController.SendStopAsync();
 		if (right) CalibrateController.SendCancelAsync(); 
