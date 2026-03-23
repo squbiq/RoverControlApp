@@ -15,6 +15,8 @@ public class CalibrateAxisController : IRoverCalibrateController
 	private bool actionTriggered = false;     // prevents repeated triggers until center
 	private float lastBumperValue = 0f;
 
+	private float offsetValue => LocalSettings.Singleton.Calibration.OffsetValue;
+
 	private float velocityMin => LocalSettings.Singleton.Calibration.CalibrationMotor.MinSpeed;
 	private float velocityMax => LocalSettings.Singleton.Calibration.CalibrationMotor.MaxSpeed;
 
@@ -186,12 +188,9 @@ public class CalibrateAxisController : IRoverCalibrateController
 		// Making sure the are not pressed together
 		if (left == right) return;
 
-		// Getting offset from panel
-		float offset = Mathf.Abs(CalibrateController.Singleton.CalibrateAxisValues.OffsetValue);
-		if (offset == 0f) return;
-
-		if (left) CalibrateController.SendOffsetAsync((-1) * offset);
-		if (right) CalibrateController.SendOffsetAsync(offset);
+		// Getting offset from settings tree
+		if (left) CalibrateController.SendOffsetAsync((-1) * offsetValue);
+		if (right) CalibrateController.SendOffsetAsync(offsetValue);
 	}
 
 	private void ActionHandler(in InputEvent inputEvent, DualSeatEvent.InputDevice targetInputDevice)

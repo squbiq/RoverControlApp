@@ -422,22 +422,22 @@ calibrate_mode={
 ]
 }
 calibrate_rotate_left={
-"deadzone": 0.5,
+"deadzone": 0.15,
 "events": [Object(InputEventJoypadMotion,"resource_local_to_scene":false,"resource_name":"","device":-1,"axis":4,"axis_value":1.0,"script":null)
 ]
 }
 calibrate_rotate_right={
-"deadzone": 0.5,
+"deadzone": 0.15,
 "events": [Object(InputEventJoypadMotion,"resource_local_to_scene":false,"resource_name":"","device":-1,"axis":5,"axis_value":1.0,"script":null)
 ]
 }
 calibrate_axis_next={
-"deadzone": 0.5,
+"deadzone": 0.15,
 "events": [Object(InputEventJoypadMotion,"resource_local_to_scene":false,"resource_name":"","device":-1,"axis":2,"axis_value":1.0,"script":null)
 ]
 }
 calibrate_axis_back={
-"deadzone": 0.5,
+"deadzone": 0.15,
 "events": [Object(InputEventJoypadMotion,"resource_local_to_scene":false,"resource_name":"","device":-1,"axis":2,"axis_value":-1.0,"script":null)
 ]
 }

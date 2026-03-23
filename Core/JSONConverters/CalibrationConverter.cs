@@ -17,6 +17,7 @@ public class CalibrationConverter : JsonConverter<Calibration>
 
 		CalibrationMotor? calibrationMotor = null;
 		int? msgLimiter = null;
+		float? offsetValue = null;
 
 		while (reader.Read())
 		{
@@ -37,6 +38,9 @@ public class CalibrationConverter : JsonConverter<Calibration>
 				case nameof(Calibration.MsgLimiter):
 					msgLimiter = reader.GetInt32();
 					break;
+				case nameof(Calibration.OffsetValue):
+					offsetValue = reader.GetSingle();
+					break;
 				default:
 					reader.Skip();
 					break;
@@ -46,6 +50,7 @@ public class CalibrationConverter : JsonConverter<Calibration>
 		return new Calibration
 		(
 			calibrationMotor ?? Default.CalibrationMotor,
+			offsetValue ?? Default.OffsetValue,
 			msgLimiter ?? Default.MsgLimiter
 		);
 	}
@@ -56,6 +61,7 @@ public class CalibrationConverter : JsonConverter<Calibration>
 		writer.WritePropertyName(nameof(Calibration.CalibrationMotor));
 		JsonSerializer.Serialize(writer, value.CalibrationMotor, options);
 		writer.WriteNumber(nameof(Calibration.MsgLimiter), value.MsgLimiter);
+		writer.WriteNumber(nameof(Calibration.OffsetValue), value.OffsetValue);
 		writer.WriteEndObject();
 	}
 }

@@ -14,12 +14,14 @@ public partial class Calibration : SettingBase, ICloneable
 	public Calibration()
 	{
 		_calibrationMotor = new();
+		_offsetValue = 0.5f;
 		_msgLimiter = 100;
 	}
 
-	public Calibration(CalibrationMotor calibrationMotor, int msgLimiter)
+	public Calibration(CalibrationMotor calibrationMotor, float offsetValue, int msgLimiter)
 	{
 		_calibrationMotor = calibrationMotor;
+		_offsetValue = offsetValue;
 		_msgLimiter = msgLimiter;
 	}
 
@@ -28,6 +30,7 @@ public partial class Calibration : SettingBase, ICloneable
 		return new Calibration()
 		{
 			CalibrationMotor = _calibrationMotor,
+			OffsetValue = _offsetValue,
 			MsgLimiter = _msgLimiter
 		};
 	}
@@ -39,6 +42,13 @@ public partial class Calibration : SettingBase, ICloneable
 		set => EmitSignal_SectionChanged(ref _calibrationMotor, value);
 	}
 
+	[SettingsManagerVisible(cellMode: TreeItem.TreeCellMode.Range, formatData: "0.5;30;0.5;f;f", customName: "Offset Value", customTooltip: "Offset movement value during calibration (for the gamepad)")]
+	public float OffsetValue
+	{
+		get => _offsetValue;
+		set => EmitSignal_SectionChanged(ref _offsetValue, value);
+	}
+
 	[SettingsManagerVisible(cellMode: TreeItem.TreeCellMode.Range, formatData: "100;1000;10;f;i", customName: "Message Limiter", customTooltip: "How long to wait before sending another message")]
 	public int MsgLimiter
 	{
@@ -48,4 +58,5 @@ public partial class Calibration : SettingBase, ICloneable
 
 	CalibrationMotor _calibrationMotor;
 	int _msgLimiter;
+	float _offsetValue;
 }

@@ -35,5 +35,6 @@ offset_top = -31.0
 offset_right = 41.5313
 grow_horizontal = 2
 grow_vertical = 0
+focus_mode = 0
 text = "20"
 alignment = 1

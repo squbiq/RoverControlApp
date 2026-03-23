@@ -164,10 +164,10 @@ size_flags_horizontal = 3
 
 [node name="OffsetKnob" parent="MainContainer/HBoxContainer/OffsetContainer" instance=ExtResource("1_6alxa")]
 layout_mode = 2
-Min = 1.0
+Min = 0.5
 Max = 30.0
-Step = 5.0
-Value = 15.0
+Step = 0.5
+Value = 12.5
 TitleText = "Offset"
 UseBipolar = true
 IncludeZeroCenter = false
