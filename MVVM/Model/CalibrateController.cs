@@ -141,20 +141,13 @@ public partial class CalibrateController : Node
 	{
 		try
 		{
-			var mapped = MapActionToLastAction(actionType);
-
-			if (PressedKeys.Singleton.ControlMode != MqttClasses.ControlMode.EStop && LastAction != LastActions.VelocityStopped) {
+			if (PressedKeys.Singleton.ControlMode != MqttClasses.ControlMode.EStop) {
 				EventLogger.LogMessage(nameof(CalibrateController), EventLogger.LogLevel.Verbose,
 					"ControlMode is not in EStop mode. Not sending CalibrateAxis.");
 				return false;
 			}
 
-			// Prevent Sending Action after Action
-			if ((LastAction == LastActions.Action || LastAction == LastActions.None) && mapped == LastActions.Action) {
-				EventLogger.LogMessage(nameof(CalibrateController), EventLogger.LogLevel.Verbose, "Action was sended");
-				return false;
-			}
-
+			var mapped = MapActionToLastAction(actionType);
 			if (updateLastAction) ChangeLastAction((int)mapped);
 
 			var msg = new MqttClasses.CalibrateAxis
